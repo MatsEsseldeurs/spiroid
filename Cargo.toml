@@ -1,0 +1,49 @@
+[package]
+name = "spiroid"
+version = "0.1.0"
+edition = "2024"
+authors = ["Tim"]
+description = "Star Planet Interaction Rotational and Orbital Integrator for Dynamics."
+readme = "README.md"
+licence = "AGPL-3.0-or-later"
+
+[lib]
+name = "spiroid_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "spiroid"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.95"
+log = "0.4.25"
+rayon = "1.10.0"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = { version = "1.0.137", features = ["float_roundtrip"] }
+astro-const = { git = "https://github.com/DynaClim/astro-const.git" }
+integrators = { git = "https://github.com/DynaClim/integrators.git" }
+math-macros = { git = "https://github.com/DynaClim/math-macros.git" }
+sci-file = { git = "https://github.com/DynaClim/sci-file.git" }
+simulation = { git = "https://github.com/DynaClim/simulation.git" }
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
+assert_approx_eq = "1.1.0"
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "deny"
+#missing_docs = "deny"
+trivial_casts = "deny"
+trivial_numeric_casts = "deny"
+unused_extern_crates = "deny"
+unused_import_braces = "deny"
+unused_qualifications = "deny"
+unused_results = "deny"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+inline_always = {level = "allow", priority = 1}
+must_use_candidate = {level = "allow", priority = 1}

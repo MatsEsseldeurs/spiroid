@@ -1,0 +1,21 @@
+## Style
+
+### Variable and function naming
+- Every variable and function should be descriptively named, and must be in English.
+- Uppercase letters must not be used in variable names.
+- Variables must begin with a letter.
+- Single letter variables are acceptable only in small scopes where the context is apparent (for example inside a loop).
+- Greek letter names (such as `alpha`, `sigma`) are acceptable only inside functions of a formula implementation if their full descriptive name is too long. In this case, a comment must exist providing a description of what the variable represents.
+
+### Numerical constants
+- All numerical constants representing a physical quantity must be defined as an `UPPERCASE_CONSTANT`, including a reference to the source of the value.
+- Literal numerical values (e.g. `780.457`) are are acceptable only inside functions of a formula implementation. In this case, a comment must exist providing a brief description of what the number represents.
+
+## Documentation
+
+### Functions
+- All physics functions must include a comment specifying the source of the equation, including equation number (if applicable).
+- The source should be a simple reference, typically the canonical author name and year (e.g. "Planetman, 2001"). A full reference including the DOI must exist in the references section.
+
+### References
+- Add a DOI [Digital Object Identifier](https://en.wikipedia.org/wiki/Digital_object_identifier) link to each reference into the `References` section, at the end of each module (source file). Keep this reference section sorted alphabetically.

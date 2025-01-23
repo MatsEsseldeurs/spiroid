@@ -1,0 +1,202 @@
+use super::*;
+use crate::universe::effects::magnetism::{IsothermalWind, MagneticModel};
+use crate::universe::particles::TidalModel;
+use crate::universe::particles::planet::tests::{test_planet, test_planet_magnetic};
+
+use pretty_assertions::assert_eq;
+use sci_file::deserialize_csv_rows_from_path;
+
+// Tests setup
+pub static TEST_TIME: f64 = 3.15576e17;
+pub static TEST_DISK_LIFETIME: f64 = 78325963200000.;
+
+fn add_interpolate_to_test_star(star: &mut Star) {
+    star.evolution = Evolution::Interpolated {
+        star_file_path: "examples/data/star/evolution/savgol_08.csv".into(),
+        interpolator: Interpolator::new(),
+    };
+    // Load stellar evolution data from file.
+    if let Some(star_file_path) = star.evolution_file() {
+        let mut stellar_data = deserialize_csv_rows_from_path::<StarCsv>(star_file_path).unwrap();
+        // Configure the stellar evolution interpolator.
+        let (star_ages, star_values) = StarCsv::initialise(&mut stellar_data);
+        star.initialise_evolution(&star_ages, &star_values);
+    }
+}
+
+pub fn test_star_evolving() -> Star {
+    let mut star = test_star();
+    add_interpolate_to_test_star(&mut star);
+    star
+}
+
+pub fn test_star() -> Star {
+    let mut star = Star::default();
+
+    star.mass = 1.5909177014856084e30;
+    star.core_envelope_coupling_constant = 369539496.0e6;
+    // The tolerance is very high: any value in range 4.7e5 to 9.3e5 will pass the existing tests.
+    star.footpoint_conductance = 7.0e4;
+    star.radius = 544588072.4685764;
+    star.convective_mass = 1.5048623991131647e30;
+    star.convective_radius = 374606632.43479675;
+
+    star.convective_moment_of_inertia = 1.0420137774656348e46;
+    star.radiative_moment_of_inertia = 3.605010133078022e46;
+    star.radiative_mass_derivative = 23849190556.112328;
+
+    star.convective_turnover_time_sun = Star::convective_turnover_time(0.02);
+    star.spin = 1.2583862403723232e-6;
+    star.angular_momentum_redistribution = 2.4499591272215565e37;
+
+    //    star.convective_moment_of_inertia_derivative = 2.380403432967787e27;
+    //    star.dynamical_tide_dissipation = 3037.223911926055;
+
+    let radiative_zone_angular_momentum = 4.547421124942826e40;
+    let convective_zone_angular_momentum = 1.3112557998411429e40;
+    star.refresh(
+        TEST_TIME,
+        radiative_zone_angular_momentum,
+        convective_zone_angular_momentum,
+    )
+    .unwrap();
+
+    star
+}
+
+// Tests below
+
+#[test]
+fn _angular_momentum_redistribution() {
+    let expected = 2.4499591272215565e37;
+    let star = test_star();
+    let result = star.angular_momentum_redistribution();
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _wind_torque() {
+    let expected = -9.356968580603306e22;
+    let star = test_star();
+    let result = star.wind_torque();
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _mass_transfer_envelope_to_core_torque() {
+    let expected = 2.80767781316852e21;
+    let star = test_star();
+    let result = star.mass_transfer_envelope_to_core_torque();
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _mass_loss_rate() {
+    let expected = 439989563.7273058;
+    let star = test_star();
+    let result = star.mass_loss_rate();
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _alfven_radius_estimate() {
+    let expected = 12999882215.232397;
+    let star = test_star();
+    let result = star.alfven_radius_estimate();
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _dynamical_tide_dissipation() {
+    let expected = 3034.8061299412066;
+    let star = test_star();
+    let result = star.dynamical_tide_dissipation();
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _rossby() {
+    let expected = 1.2930654606068248;
+    let star = test_star();
+    let result = star.rossby();
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _convective_turnover_time() {
+    let adjusted_convective_mass = 0.02;
+    let expected = 2126270.90231897;
+    let result = Star::convective_turnover_time(adjusted_convective_mass);
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _tidal_frequency() {
+    let expected = -0.00024612822573271255;
+    let mut star = test_star();
+    let planet = test_planet_magnetic();
+    star.refresh_tidal_frequency(&planet);
+    let result = Star::tidal_frequency(&star, &planet);
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _magnetic_torque_enabled() {
+    let expected = 4.648379104022687e22;
+    let mut star = test_star();
+    let planet = test_planet_magnetic();
+    star.refresh_tidal_frequency(&planet);
+    let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
+
+    let result = magnetism.magnetic_torque(&planet, &star);
+    assert_eq!(expected, result);
+}
+
+#[test]
+// No magnetic torque if magnetism is disabled.
+fn _magnetic_torque_disabled() {
+    let expected = 0.0;
+    let mut star = test_star();
+    let planet = test_planet();
+    star.refresh_tidal_frequency(&planet);
+    let mut magnetism = MagneticModel::Disabled;
+    star.magnetic_torque = magnetism.magnetic_torque(&planet, &star);
+
+    let result = magnetism.magnetic_torque(&planet, &star);
+    assert_eq!(expected, result);
+}
+
+#[test]
+// No tidal torque if tides are disabled.
+fn _tidal_torque_disabled() {
+    let expected = 0.0;
+    let mut star = test_star();
+    let planet = test_planet_magnetic();
+    star.refresh_tidal_frequency(&planet);
+    let tides = TidalModel::Disabled;
+    let result = tides.tidal_torque(&star, &planet);
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _tidal_torque_enabled() {
+    let expected = 6.325284391272144e23;
+    let mut star = test_star();
+    let planet = test_planet();
+    star.refresh_tidal_frequency(&planet);
+    let tides = TidalModel::ConstantTimeLag(1e-6);
+    let result = tides.tidal_torque(&star, &planet);
+    assert_eq!(expected, result);
+}
+
+#[test]
+// This function is only called if tides are enabled.
+fn _tidal_quality() {
+    let equilibrium_tide_dissipation: f64 = 1e-6;
+    let expected = 8678226.112383543;
+    let mut star = test_star();
+    let planet = test_planet();
+    star.refresh_tidal_frequency(&planet);
+    let result = star.tidal_quality(equilibrium_tide_dissipation);
+    assert_eq!(expected, result);
+}
