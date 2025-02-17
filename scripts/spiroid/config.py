@@ -38,7 +38,7 @@ def base_odex():
         "Odex": {
             "step_size_reduction_factor": 0.66666666666666666666,
             "step_size_selection_b": 2.0,
-            "max_step_size": 15778800000000.0,
+            "step_size_max": 15778800000000.0,
             "max_integration_steps": 100000000,
         }
     }
@@ -47,7 +47,7 @@ def base_odex():
 def kaula_odex():
     """Generates Odex integrator template with values tuned for kaula simulations."""
     integrator = base_odex()
-    integrator["Odex"]["max_step_size"] = 31557600000.0
+    integrator["Odex"]["step_size_max"] = 31557600000.0
     integrator["Odex"]["max_integration_steps"] = 500000000
     integrator["Odex"]["step_control_safety_a"] = 0.05
     integrator["Odex"]["step_control_safety_b"] = 0.2

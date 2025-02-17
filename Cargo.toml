@@ -1,6 +1,6 @@
 [package]
 name = "spiroid"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Tim"]
 description = "Star Planet Interaction Rotational and Orbital Integrator for Dynamics."
@@ -20,7 +20,7 @@ anyhow = "1.0.95"
 log = "0.4.25"
 rayon = "1.10.0"
 serde = { version = "1.0.217", features = ["derive"] }
-serde_json = { version = "1.0.137", features = ["float_roundtrip"] }
+serde_json = { version = "1.0.138", features = ["float_roundtrip"] }
 astro-const = { git = "https://github.com/DynaClim/astro-const.git" }
 integrators = { git = "https://github.com/DynaClim/integrators.git" }
 math-macros = { git = "https://github.com/DynaClim/math-macros.git" }
