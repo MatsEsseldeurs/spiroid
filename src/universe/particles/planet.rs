@@ -122,7 +122,7 @@ impl Planet {
         // so set it and the spin to zero to avoid the computation of the derivative and singularities.
         if abs!(inclination) < 1.7453e-6 {
             self.inclination = 0.0;
-            self.spin = 0.0;
+            self.spin_inclination = 0.0;
         } else {
             self.inclination = inclination;
             self.spin_inclination = spin_inclination;
