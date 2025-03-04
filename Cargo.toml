@@ -16,16 +16,15 @@ name = "spiroid"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1.0.95"
-log = "0.4.25"
+anyhow = "1.0.97"
+log = "0.4.26"
 rayon = "1.10.0"
-serde = { version = "1.0.217", features = ["derive"] }
-serde_json = { version = "1.0.138", features = ["float_roundtrip"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.140", features = ["float_roundtrip"] }
 astro-const = { git = "https://github.com/DynaClim/astro-const.git" }
-integrators = { git = "https://github.com/DynaClim/integrators.git" }
 math-macros = { git = "https://github.com/DynaClim/math-macros.git" }
 sci-file = { git = "https://github.com/DynaClim/sci-file.git" }
-simulation = { git = "https://github.com/DynaClim/simulation.git" }
+simulation = { git = "https://github.com/DynaClim/simulation.git"}
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

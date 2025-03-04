@@ -5,9 +5,7 @@ use serde_json::{Value, json};
 extern crate math_macros;
 pub use astro_const::constants;
 pub use constants::*;
-pub use simulation::Simulation;
-
-use integrators::System;
+pub use simulation::{Simulation, System};
 use sci_file::OutputFile;
 
 mod physics;

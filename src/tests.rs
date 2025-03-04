@@ -1,5 +1,5 @@
 use super::*;
-use integrators::{Integrator, System};
+use simulation::{Integrator, System};
 use sci_file::{
     OutputFile, deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_path,
     deserialize_json_from_path,
