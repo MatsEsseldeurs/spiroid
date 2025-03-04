@@ -73,9 +73,9 @@ def make_planets(planet_base, effects):
 
         if effects["PLANET_TIDES_ENABLED"]:
             (
-                inclination,
-                eccentricity,
                 spin,
+                eccentricity,
+                inclination,
                 longitude_ascending_node,
                 pericentre_omega,
                 spin_inclination,
@@ -112,7 +112,6 @@ def make_planets(planet_base, effects):
 def make_stars(star_base, effects):
     """Generate all combinations of stars based on specified values of `star_base` dictionary."""
     stars = []
-
     combis = [x for x in itertools.product(*star_base.values())]
     for star_vals in combis:
         (
