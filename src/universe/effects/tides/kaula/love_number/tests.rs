@@ -1,6 +1,7 @@
 use super::*;
 use crate::universe::particles::planet::tests::test_planet_kaula;
-use crate::universe::particles::star::tests::{TEST_TIME, test_star};
+use crate::universe::particles::star::tests::test_star;
+use crate::universe::tests::TEST_TIME;
 use pretty_assertions::assert_eq;
 
 #[cfg(test)]

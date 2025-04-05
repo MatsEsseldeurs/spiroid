@@ -2,13 +2,10 @@ use super::*;
 use crate::universe::effects::magnetism::{IsothermalWind, MagneticModel};
 use crate::universe::particles::TidalModel;
 use crate::universe::particles::planet::tests::{test_planet, test_planet_magnetic};
+use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_TIME};
 
 use pretty_assertions::assert_eq;
 use sci_file::deserialize_csv_rows_from_path;
-
-// Tests setup
-pub static TEST_TIME: f64 = 3.15576e17;
-pub static TEST_DISK_LIFETIME: f64 = 78325963200000.;
 
 fn add_interpolate_to_test_star(star: &mut Star) {
     star.evolution = Evolution::Interpolated {
@@ -58,6 +55,7 @@ pub fn test_star() -> Star {
         TEST_TIME,
         radiative_zone_angular_momentum,
         convective_zone_angular_momentum,
+        DISK_IS_DISSIPATED,
     )
     .unwrap();
 

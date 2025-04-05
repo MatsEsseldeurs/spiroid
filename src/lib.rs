@@ -5,8 +5,8 @@ use serde_json::{Value, json};
 extern crate math_macros;
 pub use astro_const::constants;
 pub use constants::*;
-pub use simulation::{Simulation, System};
 use sci_file::OutputFile;
+pub use simulation::{Simulation, System};
 
 mod physics;
 mod universe;
@@ -43,7 +43,7 @@ impl System for Spiroid {
         // Update the state of the universe based on the current integration values.
         self.data.update(time, y)?;
         // Compute the derivatives using the updated values.
-        force(time, y, dy, &mut self.data)?;
+        force(dy, &mut self.data)?;
 
         Ok(())
     }

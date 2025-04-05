@@ -1,10 +1,10 @@
 use super::*;
-use simulation::{Integrator, System};
 use sci_file::{
     OutputFile, deserialize_csv_column_vectors_from_path, deserialize_csv_rows_from_path,
     deserialize_json_from_path,
 };
 use simulation::InputConfig;
+use simulation::{Integrator, System};
 use std::path::PathBuf;
 
 use pretty_assertions::assert_eq;
@@ -31,7 +31,7 @@ impl System for Test {
         // Update the state of the universe based on the current integration values.
         self.data.update(time, y)?;
         // Compute the derivatives using the updated values.
-        force(time, y, dy, &mut self.data)?;
+        force(dy, &mut self.data)?;
         Ok(())
     }
 
@@ -97,8 +97,8 @@ fn test_simulation(config: PathBuf) -> Vec<f64> {
 fn example_no_effects() {
     let result = test_simulation("examples/no_effects.conf".into());
     let expected = vec![
-        4.787118213002163e40,
-        1.3794130696558446e40,
+        4.787195367394652e40,
+        1.379435172443799e40,
         2.8113413766640534e61,
     ];
     assert_eq!(expected, result);
@@ -108,9 +108,9 @@ fn example_no_effects() {
 fn example_tides() {
     let result = test_simulation("examples/tides.conf".into());
     let expected = vec![
-        4.787143163297013e40,
-        1.3794202173212958e40,
-        2.9069618463376594e60,
+        4.787228096167544e40,
+        1.379444548367282e40,
+        1.9565113030403245e60,
     ];
     assert_eq!(expected, result);
 }
@@ -119,9 +119,9 @@ fn example_tides() {
 fn example_magnetic() {
     let result = test_simulation("examples/magnetic.conf".into());
     let expected = vec![
-        5.394133407982592e40,
-        1.5559592497137857e40,
-        7.565340545548777e59,
+        5.393397215732234e40,
+        1.555743141318885e40,
+        7.613974080370305e59,
     ];
     assert_eq!(expected, result);
 }
@@ -130,9 +130,9 @@ fn example_magnetic() {
 fn example_magnetic_tides() {
     let result = test_simulation("examples/magnetic_tides.conf".into());
     let expected = vec![
-        4.787136126036125e40,
-        1.3794182013101542e40,
-        7.069089651047147e60,
+        4.787225566644661e40,
+        1.3794438237358614e40,
+        2.445435249430109e60,
     ];
     assert_eq!(expected, result);
 }

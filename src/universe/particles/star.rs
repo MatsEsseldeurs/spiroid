@@ -58,7 +58,6 @@ pub struct Star {
     pub(crate) luminosity: f64, // solar units
 
     // Calculated internally
-    pub initial_spin: f64,
     dynamical_tide_dissipation: f64,
     convective_turnover_time: f64,
     convective_turnover_time_sun: f64,
@@ -165,7 +164,6 @@ impl Star {
     }
 
     pub(crate) fn initialise(&mut self, time: f64) -> Result<()> {
-        self.initial_spin = self.spin;
         self.mass *= SOLAR_MASS;
         // Convert from years to seconds.
         self.core_envelope_coupling_constant *= SECONDS_IN_YEAR;
@@ -191,12 +189,16 @@ impl Star {
         time: f64,
         radiative_zone_angular_momentum: f64,
         convective_zone_angular_momentum: f64,
+        disk_is_dissipated: bool,
     ) -> Result<()> {
         self.radiative_zone_angular_momentum = radiative_zone_angular_momentum;
         self.convective_zone_angular_momentum = convective_zone_angular_momentum;
         self.stellar_evolution(time)?;
+        // Update the spin only after the disk has dissipated.
+        if disk_is_dissipated {
+            self.spin = self.spin(); // requires convective_zone_angular_momentum, convective_moment_of_inertia
+        }
 
-        self.spin = self.spin(); // requires convective_zone_angular_momentum, convective_moment_of_inertia
         self.angular_momentum_redistribution = self.angular_momentum_redistribution(); // requires convective_moment_of_inertia, radiative_moment_of_inertia, convective_zone_angular_momentum, radiative_zone_angular_momentum
         let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
         self.convective_turnover_time = Self::convective_turnover_time(radiative_zone_mass_ratio);

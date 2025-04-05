@@ -3,7 +3,7 @@ use crate::universe::effects::tides::TidalModel;
 use crate::universe::{Kaula, ParticleType, Planet, Star, Universe};
 use anyhow::{Result, bail};
 
-pub(crate) fn force(time: f64, y: &[f64], dy: &mut [f64], universe: &mut Universe) -> Result<()> {
+pub(crate) fn force(dy: &mut [f64], universe: &mut Universe) -> Result<()> {
     dy.fill(0.0);
 
     let ParticleType::Star(star) = &mut universe.central_body.kind else {
@@ -16,7 +16,7 @@ pub(crate) fn force(time: f64, y: &[f64], dy: &mut [f64], universe: &mut Univers
 
     // Star properties
     dy[0] = star_radiative_zone_angular_momentum_derivative(star);
-    dy[1] = star_convective_zone_angular_momentum_derivative(time, star, universe.disk_lifetime);
+    dy[1] = star_convective_zone_angular_momentum_derivative(star, universe.disk_is_dissipated);
 
     // If the planet is destroyed, only the star properties are computed.
     if planet.is_destroyed {
@@ -42,7 +42,7 @@ pub(crate) fn force(time: f64, y: &[f64], dy: &mut [f64], universe: &mut Univers
 
     for val in dy.iter() {
         if *val != 0.0 && !val.is_normal() {
-            let msg = format!("{:?}, {:?}, y: {:?}, dy: {:?}", &star, &planet, &y, &dy);
+            let msg = format!("{:?}, {:?}, dy: {:?}", &star, &planet, &dy);
             eprintln!("{}", &msg);
             bail!(
                 "error in computation of derivatives: Houston, we have a NaN...infinity, and beyond! {msg}"
@@ -55,14 +55,10 @@ pub(crate) fn force(time: f64, y: &[f64], dy: &mut [f64], universe: &mut Univers
 
 // Rate of change in the angular momentum in the convective zone.
 // Ahuir et al. 2021, Eq. 2.
-fn star_convective_zone_angular_momentum_derivative(
-    time: f64,
-    star: &Star,
-    disk_lifetime: f64,
-) -> f64 {
-    // Test whether the disk is dissipated.
-    if time < disk_lifetime {
-        return star.initial_spin * star.convective_moment_of_inertia_derivative;
+fn star_convective_zone_angular_momentum_derivative(star: &Star, disk_is_dissipated: bool) -> f64 {
+    // If the disk has not dissipated, the spin of the star has not evolved.
+    if !disk_is_dissipated {
+        return star.spin * star.convective_moment_of_inertia_derivative;
     }
     star.angular_momentum_redistribution / star.core_envelope_coupling_constant
         - star.mass_transfer_envelope_to_core_torque

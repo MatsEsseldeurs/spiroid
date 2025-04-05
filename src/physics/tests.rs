@@ -5,9 +5,8 @@ use crate::universe::effects::tides::kaula::tests::test_kaula;
 use crate::universe::particles::planet::tests::{
     test_planet, test_planet_kaula, test_planet_magnetic,
 };
-use crate::universe::particles::star::tests::{
-    TEST_DISK_LIFETIME, TEST_TIME, test_star, test_star_evolving,
-};
+use crate::universe::particles::star::tests::{test_star, test_star_evolving};
+use crate::universe::tests::{DISK_IS_DISSIPATED, TEST_DISK_LIFETIME, TEST_TIME};
 use crate::universe::{Particle, ParticleType};
 use pretty_assertions::assert_eq;
 
@@ -34,10 +33,11 @@ fn _force_magnetic() {
             magnetism: MagneticModel::Wind(IsothermalWind::default()),
         },
         disk_lifetime: TEST_DISK_LIFETIME,
+        disk_is_dissipated: DISK_IS_DISSIPATED,
     };
     let mut result = y.to_vec();
     universe.update(TEST_TIME, &y).unwrap();
-    let _ = force(TEST_TIME, &y, &mut result, &mut universe).unwrap();
+    let _ = force(&mut result, &mut universe).unwrap();
     let expected = vec![
         -6.348994811695528e22,
         1.6351930535408648e22,
@@ -68,10 +68,11 @@ fn _force_tides() {
             magnetism: MagneticModel::Disabled,
         },
         disk_lifetime: TEST_DISK_LIFETIME,
+        disk_is_dissipated: DISK_IS_DISSIPATED,
     };
     let mut result = y.to_vec();
     universe.update(TEST_TIME, &y).unwrap();
-    let _ = force(TEST_TIME, &y, &mut result, &mut universe).unwrap();
+    let _ = force(&mut result, &mut universe).unwrap();
     let expected = vec![
         -6.348994811695528e22,
         6.020027165936562e23,
@@ -103,10 +104,11 @@ fn _force_magnetic_tides() {
             magnetism: MagneticModel::Wind(IsothermalWind::default()),
         },
         disk_lifetime: TEST_DISK_LIFETIME,
+        disk_is_dissipated: DISK_IS_DISSIPATED,
     };
     let mut result = y.to_vec();
     universe.update(TEST_TIME, &y).unwrap();
-    let _ = force(TEST_TIME, &y, &mut result, &mut universe).unwrap();
+    let _ = force(&mut result, &mut universe).unwrap();
     let expected = vec![
         -6.348994811695528e22,
         6.486208599049978e23,
@@ -145,10 +147,11 @@ fn _force_kaula() {
             magnetism: MagneticModel::Disabled,
         },
         disk_lifetime: TEST_DISK_LIFETIME,
+        disk_is_dissipated: DISK_IS_DISSIPATED,
     };
     let mut result = y.to_vec();
     universe.update(TEST_TIME, &y).unwrap();
-    let _ = force(TEST_TIME, &y, &mut result, &mut universe).unwrap();
+    let _ = force(&mut result, &mut universe).unwrap();
     let expected = vec![
         0.0,
         0.0,
@@ -178,8 +181,7 @@ fn _force1() {
     let mut star = test_star();
     let planet = test_planet();
     star.refresh_tidal_frequency(&planet);
-    let result =
-        star_convective_zone_angular_momentum_derivative(TEST_TIME, &star, TEST_DISK_LIFETIME);
+    let result = star_convective_zone_angular_momentum_derivative(&star, DISK_IS_DISSIPATED);
     let expected = -3.0079737689074846e22;
     assert_eq!(expected, result);
 }

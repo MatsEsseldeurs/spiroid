@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Universe {
     pub disk_lifetime: f64,
+    #[serde(default)]
+    pub disk_is_dissipated: bool,
     pub orbiting_body: Particle,
     pub central_body: Particle,
 }
@@ -23,11 +25,11 @@ impl Universe {
 
         if let ParticleType::Star(star) = &mut self.central_body.kind {
             star.initialise(time)?;
-        };
+        }
 
         if let ParticleType::Planet(planet) = &mut self.orbiting_body.kind {
             planet.initialise();
-        };
+        }
 
         Ok(())
     }
@@ -37,10 +39,10 @@ impl Universe {
         let mut vec = vec![];
         if let ParticleType::Star(star) = &self.central_body.kind {
             vec.append(&mut vec![
-                star.initial_spin * star.radiative_moment_of_inertia,
-                star.initial_spin * star.convective_moment_of_inertia,
+                star.spin * star.radiative_moment_of_inertia,
+                star.spin * star.convective_moment_of_inertia,
             ]);
-        };
+        }
 
         if let ParticleType::Planet(planet) = &self.orbiting_body.kind {
             vec.append(&mut vec![
@@ -60,22 +62,29 @@ impl Universe {
                     planet.spin_inclination,
                 ]);
             }
-        };
+        }
 
         vec
+    }
+
+    fn disk_is_dissipated(&mut self, time: f64) {
+        self.disk_is_dissipated = self.disk_is_dissipated || (time > self.disk_lifetime);
     }
 
     // Update the planet and star values from the integrator prior to the derivation step.
     pub(crate) fn update(&mut self, time: f64, y: &[f64]) -> Result<()> {
         // ***WARNING!***
-        // Stateful function.planet.longitude_ascending_node
+        // Stateful function
         // The order of these calculations is important.
         // Lower order calculations depend on previous values.
         // ***WARNING!***
+
+        // Calculate the dissipation status of the disk.
+        self.disk_is_dissipated(time);
         if let ParticleType::Star(star) = &mut self.central_body.kind {
             // Update radiative zone (y[0]) and convective zone (y[1]) angular momentum
             // and recompute independent values.
-            star.refresh(time, y[0], y[1])?;
+            star.refresh(time, y[0], y[1], self.disk_is_dissipated)?;
 
             if let ParticleType::Planet(planet) = &mut self.orbiting_body.kind {
                 // Nothing to compute if the planet is already destroyed.
@@ -93,14 +102,15 @@ impl Universe {
                 }
 
                 // Compute the enabled effects (magnetism, stellar tides, planet tides)
-                if time < self.disk_lifetime {
-                    star.update_torques(0., 0.);
-                } else {
+                if self.disk_is_dissipated {
                     // Recompute star values that depend on planet (tidal and magnetic torque).
                     star.refresh_tidal_frequency(planet);
                     let tidal_torque = self.central_body.tides.tidal_torque(star, planet);
                     let magnetic_torque = self.central_body.magnetism.magnetic_torque(planet, star);
                     star.update_torques(tidal_torque, magnetic_torque);
+                } else {
+                    // No torques during disk lifetime.
+                    star.update_torques(0., 0.);
                 }
 
                 if self.orbiting_body.tides.kaula_enabled() {
@@ -110,9 +120,12 @@ impl Universe {
                     // Recompute the kaula tidal effects.
                     self.orbiting_body.tides.refresh_kaula(time, star, planet)?;
                 }
-            };
-        };
+            }
+        }
 
         Ok(())
     }
 }
+
+#[cfg(test)]
+pub mod tests;
