@@ -17,7 +17,7 @@ enum Evolution {
     Disabled,
     Interpolated {
         star_file_path: PathBuf,
-        #[serde(default)]
+        #[serde(default, skip_serializing)]
         interpolator: Interpolator<Vec<f64>>,
     },
 }

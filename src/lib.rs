@@ -8,11 +8,10 @@ pub use constants::*;
 use sci_file::OutputFile;
 pub use simulation::{Simulation, System};
 
-mod physics;
 mod universe;
 mod utils;
 
-use physics::force;
+use universe::physics::force;
 pub use universe::{ParticleType, Planet, Star, StarCsv, Universe};
 
 #[derive(Debug)]

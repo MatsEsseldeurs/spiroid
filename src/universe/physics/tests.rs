@@ -32,6 +32,7 @@ fn _force_magnetic() {
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Wind(IsothermalWind::default()),
         },
+        time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
     };
@@ -67,6 +68,7 @@ fn _force_tides() {
             tides: TidalModel::ConstantTimeLag(1e-6),
             magnetism: MagneticModel::Disabled,
         },
+        time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
     };
@@ -103,6 +105,7 @@ fn _force_magnetic_tides() {
             tides: TidalModel::ConstantTimeLag(1e-6),
             magnetism: MagneticModel::Wind(IsothermalWind::default()),
         },
+        time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
     };
@@ -146,6 +149,7 @@ fn _force_kaula() {
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
         },
+        time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
         disk_is_dissipated: DISK_IS_DISSIPATED,
     };

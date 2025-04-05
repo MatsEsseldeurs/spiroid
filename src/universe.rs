@@ -1,5 +1,6 @@
 pub(crate) mod effects;
 pub(crate) mod particles;
+pub(crate) mod physics;
 
 use crate::SECONDS_IN_YEAR;
 pub use effects::Kaula;
@@ -8,11 +9,13 @@ pub use particles::{Particle, ParticleType, Planet, Star, StarCsv};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Universe {
-    pub disk_lifetime: f64,
     #[serde(default)]
-    pub disk_is_dissipated: bool,
+    time: f64,
+    disk_lifetime: f64,
+    #[serde(default)]
+    disk_is_dissipated: bool,
     pub orbiting_body: Particle,
     pub central_body: Particle,
 }
@@ -67,8 +70,12 @@ impl Universe {
         vec
     }
 
-    fn disk_is_dissipated(&mut self, time: f64) {
-        self.disk_is_dissipated = self.disk_is_dissipated || (time > self.disk_lifetime);
+    fn disk_is_dissipated(&mut self) {
+        self.disk_is_dissipated = self.disk_is_dissipated || (self.time > self.disk_lifetime);
+    }
+
+    fn update_time(&mut self, time_in_seconds: f64) {
+        self.time = time_in_seconds;
     }
 
     // Update the planet and star values from the integrator prior to the derivation step.
@@ -79,8 +86,11 @@ impl Universe {
         // Lower order calculations depend on previous values.
         // ***WARNING!***
 
+        // Set the time.
+        self.update_time(time);
         // Calculate the dissipation status of the disk.
-        self.disk_is_dissipated(time);
+        self.disk_is_dissipated();
+
         if let ParticleType::Star(star) = &mut self.central_body.kind {
             // Update radiative zone (y[0]) and convective zone (y[1]) angular momentum
             // and recompute independent values.

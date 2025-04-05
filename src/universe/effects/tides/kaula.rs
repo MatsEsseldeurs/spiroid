@@ -17,7 +17,9 @@ use crate::utils::{factorial, kronecker_delta};
 pub struct Kaula {
     pub(crate) particle_type: ParticleComposition,
     // Inclination and eccentricty polynomials
+    #[serde(skip_serializing)]
     polynomials: Polynomials,
+    #[serde(skip_serializing)]
     love_number: LoveNumber,
 }
 

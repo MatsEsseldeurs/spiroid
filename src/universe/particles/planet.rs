@@ -3,7 +3,7 @@ use crate::universe::particles::{ParticleT, magnetic_pressure};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
 pub struct Planet {

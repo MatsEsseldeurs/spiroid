@@ -9,13 +9,13 @@ pub use star::{Star, StarCsv};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub enum ParticleType {
     Planet(Planet),
     Star(Star),
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Particle {
     pub kind: ParticleType,
     #[serde(default)]
