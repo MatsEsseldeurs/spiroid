@@ -24,7 +24,9 @@ mytitle-speed.png
 mytitle-speed-logscale.png
 
 """
+
 import sys
+
 sys.dont_write_bytecode = True
 
 import glob
@@ -35,12 +37,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import os
 from pathlib import Path
+from flatten_json import flatten
 
+from units import (
+    sanitise_key,
+    partition_keys,
+    convert_units,
+    get_units_label,
+    filter_keys,
+)
 
-try:
-    from units import units_dict
-except ImportError:
-    units_dict = {}
 
 def parse_values(file_path):
     if file_path.endswith(".jsonl"):
@@ -53,16 +59,22 @@ def parse_jsonl(file_path):
     """Reads a JSONL file and combines all entries into a single dictionary."""
     dict = {}
 
+    # Replace booleans with 0/1 so they can be plotted.
+    lookup = {False: 0, True: 1}
+
     with open(file_path, "r") as file:
         for line in file:
             data = json.loads(line)
+            data = flatten(data)
             # Update the combined dictionary with the current JSON object
             for key, value in data.items():
+                key = sanitise_key(key)
+                value = lookup.get(value, value)
+
                 if key in dict:
                     dict[key].append(value)
                 else:
                     dict[key] = [value]
-
     return dict
 
 
@@ -97,8 +109,8 @@ def parse_values_lines(file_path):
 
 def create_plot(title, x_label, y_label, subplots, logscale=False):
     """Creates a figure containing specified subplots."""
-    plt.xlabel(f"{x_label} ({units_dict.get(x_label, '')})")
-    plt.ylabel(f"{y_label} ({units_dict.get(y_label, '')})")
+    plt.xlabel(f"{x_label} ({get_units_label(x_label)})")
+    plt.ylabel(f"{y_label} ({get_units_label(y_label)})")
 
     # Colors for each subplot
     colors = list(matplotlib.colors.XKCD_COLORS.keys())
@@ -106,6 +118,7 @@ def create_plot(title, x_label, y_label, subplots, logscale=False):
     # Plot all subplots, assigning each subplot a distinct color.
     for data in subplots:
         (name, x, y) = data
+        y = [convert_units(y_label, a) for a in y]
         plt.plot(x, y, "", label=name, color=colors.pop(), alpha=0.5)
 
     # Convert to logscale if required.
@@ -124,7 +137,7 @@ def save_plot(title, output_path):
     """Saves the plot to png."""
     # Save the figure as a file.
     plt.savefig(
-        f"{output_path}/{title.replace(' ', '_').replace('\n', ':')}.png",
+        f"{output_path}/{title.lower().replace(' ', '_').replace('\n', ':')}.png",
         dpi=500,
         bbox_inches="tight",
     )
@@ -189,7 +202,6 @@ def main():
     # }
     all_data = {file: parse_values(file) for file in all_files}
     x_label = "time"
-
     if output_path:
         # Create plots for each quantitiy, containing data from all data files.
         all_keys = set()
@@ -197,8 +209,10 @@ def main():
         for _, d in all_data.items():
             all_keys.update(set(d.keys()))
 
-        # Create a plot for each quantity except for time.
-        all_keys.remove(x_label)
+        # Remove unwanted keys (keys specified as unworth for plotting).
+        all_keys = filter_keys(all_keys)
+        # Convert units for x axis.
+        all_data[x_label] = [convert_units(x_label, a) for a in all_data[x_label]]
         for y_label in all_keys:
             print(f"Making graph: {y_label}")
             subplots = create_merged_subplots(x_label, y_label, all_data)
@@ -206,20 +220,25 @@ def main():
     else:
         # Create a plot for each quantity for each data file.
         for path, data in all_data.items():
+            # Convert units for x axis.
+            data[x_label] = [convert_units(x_label, a) for a in data[x_label]]
             # Set the output directory to save the plots
             output_path = os.path.dirname(path)
             all_keys = {*data.keys()}
             print(f"processing file: {output_path}")
-            all_keys.remove(x_label)
+            # Remove unwanted keys (keys specified as unworth for plotting).
+            all_keys = filter_keys(all_keys)
             for y_label in all_keys:
                 print(f"Making graph: {y_label}")
                 subplots = create_subplots(x_label, [y_label], data)
                 create_plots(x_label, y_label, subplots, output_path)
-            # Create a merged plot for all quantities for each data file.
-            y_label = "All quantities"
-            print(f"Making graph: {y_label}")
-            subplots = create_subplots(x_label, all_keys, data)
-            create_plots(x_label, y_label, subplots, output_path)
+            # Create a merged plot for all grouped quantities for each data file.
+            for y_label, key_set in partition_keys(all_keys).items():
+                if len(key_set) == 1:
+                    continue
+                print(f"Making graph: {y_label}")
+                subplots = create_subplots(x_label, key_set, data)
+                create_plots(x_label, y_label, subplots, output_path)
 
 
 if __name__ == "__main__":

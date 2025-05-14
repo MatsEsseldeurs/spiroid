@@ -72,20 +72,20 @@ impl Spiroid {
     // Called by the integrator to output the intermediate solutions.
     fn solout(&mut self, time: f64, y: &[f64]) -> Value {
         json!({
-            "time": time / SECONDS_IN_YEAR,
+            "time": time,
             "radiative_zone_angular_momentum": y[0],
             "convective_zone_angular_momentum": y[1],
-            "planet_semi_major_axis": y[2].powf(2. / 13.) / AU,
+            "planet_semi_major_axis": y[2].powf(2. / 13.),
         })
     }
 
     #[allow(clippy::unused_self)]
     fn solout_kaula(&mut self, time: f64, y: &[f64]) -> Value {
         json!({
-            "time": time / SECONDS_IN_YEAR,
+            "time": time,
             "radiative_zone_angular_momentum": y[0],
             "convective_zone_angular_momentum": y[1],
-            "planet_semi_major_axis": y[2].powf(2. / 13.) / AU,
+            "planet_semi_major_axis": y[2].powf(2. / 13.),
             "planet_spin": y[3],
             "planet_eccentricity": sqrt!(y[4]),
             "planet_inclination": y[5],

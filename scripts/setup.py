@@ -5,7 +5,9 @@ A simulation input config file is generated for all combinations
 of the values of the star, planet and effects.
 
 """
+
 import sys
+
 sys.dont_write_bytecode = True
 from spiroid.configmaker import make_configs
 
@@ -81,7 +83,10 @@ def planet_setup(effects):
                 # No units.
                 "radius_of_gyration": [0.33070368308499226],
                 "type_and_file": [
-                    ("Solid", "examples/data/planet/tides/kaula/leconte2015_steinberger.csv")
+                    (
+                        "Solid",
+                        "examples/data/planet/tides/kaula/leconte2015_steinberger.csv",
+                    )
                 ],
             }
         )

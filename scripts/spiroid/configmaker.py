@@ -5,7 +5,9 @@ A simulation input config file is generated for all combinations
 of the values of the star and planet.
 
 """
+
 import sys
+
 sys.dont_write_bytecode = True
 
 import json
