@@ -10,6 +10,7 @@ import sys
 
 sys.dont_write_bytecode = True
 from spiroid.configmaker import make_configs
+from units import SECONDS_IN_YEAR
 
 
 def simulator_setup():
@@ -126,5 +127,61 @@ def star_setup(effects):
     return star_base
 
 
+def integrator_setup():
+    ##############################################################
+    #################### INTEGRATOR SETUP ########################
+    ##############################################################
+
+    odex = {
+        "Odex": {
+            "step_size_reduction_factor": 0.66666666666666666666,
+            "step_size_selection_b": 2.0,
+            "step_size_max": SECONDS_IN_YEAR * 5e5,
+            "max_integration_steps": 100000000,
+        }
+    }
+
+    # Kaula tides on the planet modifies the integrator defaults to avoid timestep issue.
+    odex_kaula = {
+        "Odex": {
+            "step_size_reduction_factor": 0.66666666666666666666,
+            "step_size_selection_b": 2.0,
+            "step_size_max": SECONDS_IN_YEAR * 1e3,
+            "max_integration_steps": 500000000,
+            "step_control_safety_a": 0.05,
+            "step_control_safety_b": 0.2,
+        }
+    }
+
+    dopri853 = {
+        "Dopri853": {
+            "step_size_controller": {
+                "relative_tolerance": 1e-10,
+                "absolute_tolerance": 1e-10,
+                "step_size_factor_min": 0.3333333333333333,
+                "step_size_factor_max": 6.0,
+                "step_size_error_factor": 0.9,
+                "step_size_max": SECONDS_IN_YEAR * 5e5,
+                "alpha": 0.125,
+                "beta": 0.0,
+            },
+            "step_size_underflow": None,
+            "stiffness_test": "Disabled",
+            "max_integration_steps": 100000000,
+            "solution_output": {
+                "Dense": {
+                    "increment": SECONDS_IN_YEAR * 1e6,
+                }
+            },
+        }
+    }
+
+    # Uncomment only the desired integrator.
+    return odex
+#    return odex_kaula
+#    return dopri853
+
 if __name__ == "__main__":
-    make_configs(simulator_setup, effect_setup, planet_setup, star_setup)
+    make_configs(
+        simulator_setup, effect_setup, planet_setup, star_setup, integrator_setup
+    )

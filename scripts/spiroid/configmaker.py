@@ -24,7 +24,9 @@ def make_config_files(simulation_name, all_configs, output_path):
             f.write(json.dumps(config, indent=4))
 
 
-def make_configs(simulator_setup, effect_setup, planet_setup, star_setup):
+def make_configs(
+    simulator_setup, effect_setup, planet_setup, star_setup, integrator_setup
+):
     """Generates a simulation configuration file for each combination of planets and stars."""
     if len(sys.argv) != 2:
         print("usage: python3 setup.py path/to/output/folder")
@@ -35,6 +37,9 @@ def make_configs(simulator_setup, effect_setup, planet_setup, star_setup):
     Path(output_path).mkdir(parents=True, exist_ok=True)
     # Initialise the simulation properties.
     (simulation, disk_lifetime) = simulator_setup()
+
+    # Initialise the integrator.
+    integrator = integrator_setup()
 
     # Generates all combinations of enabled effects.
     all_effects = generate_all_effect_combinations(effect_setup())
@@ -51,5 +56,6 @@ def make_configs(simulator_setup, effect_setup, planet_setup, star_setup):
             planet_base,
             star_base,
             effects,
+            integrator,
         )
         make_config_files(simulation_name, all_configs, output_path)

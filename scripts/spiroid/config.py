@@ -21,40 +21,6 @@ def make_config(planet, star, disk_lifetime, integrator, start_time, final_time)
     }
 
 
-def make_integrator(effects):
-    """Generates appropriate integrator template."""
-    # Kaula tides on the planet modifies the integrator defaults to avoid timestep issue.
-    if effects["PLANET_TIDES_ENABLED"]:
-        integrator = kaula_odex()
-    else:
-        integrator = base_odex()
-
-    return integrator
-
-
-def base_odex():
-    """Generates basic Odex integrator template."""
-    return {
-        "Odex": {
-            "step_size_reduction_factor": 0.66666666666666666666,
-            "step_size_selection_b": 2.0,
-            "step_size_max": 15778800000000.0,
-            "max_integration_steps": 100000000,
-        }
-    }
-
-
-def kaula_odex():
-    """Generates Odex integrator template with values tuned for kaula simulations."""
-    integrator = base_odex()
-    integrator["Odex"]["step_size_max"] = 31557600000.0
-    integrator["Odex"]["max_integration_steps"] = 500000000
-    integrator["Odex"]["step_control_safety_a"] = 0.05
-    integrator["Odex"]["step_control_safety_b"] = 0.2
-
-    return integrator
-
-
 def make_planets(planet_base, effects):
     """Generate all combinations of planets based on specified values of `planet_base` dictionary."""
     planets = []
@@ -150,10 +116,9 @@ def make_stars(star_base, effects):
 
 
 def generate_all_configs(
-    start_time, final_time, disk_lifetime, planet_base, star_base, effects
+    start_time, final_time, disk_lifetime, planet_base, star_base, effects, integrator
 ):
     """Generates a simulation configuration file for each combination of planets and stars."""
-    integrator = make_integrator(effects)
     planets = make_planets(planet_base, effects)
     stars = make_stars(star_base, effects)
 

@@ -27,6 +27,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+
 def _construct_key(previous_key, separator, new_key, replace_separators=None):
     """
     Returns the new_key if no previous key exists, otherwise concatenates
