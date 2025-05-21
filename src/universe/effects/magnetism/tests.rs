@@ -23,6 +23,7 @@ fn _init_weber_davis() {
 
         azimuthal_velocity: 2392.2989794266414,
         alfven_speed_at_alfven_radius: 396435.90253451304,
+        interaction: MagneticInteraction::None,
     };
     let star = test_star();
     let mut wind = IsothermalWind::default();

@@ -13,7 +13,7 @@ pub enum TidalModel {
     // Equilibrium tide dissipation given as the dimensionless sigma_bar_star from Bolmont & Mathis (2016), Eq. 8
     ConstantTimeLag(f64),
     KaulaTides {
-        kaula: Box<Kaula>,
+        kaula: Kaula,
     },
 }
 
