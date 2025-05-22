@@ -9,6 +9,13 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub enum UniverseKind {
+    StarPlanet,
+    BinaryStar, //TODO unimplemented
+    PlanetMoon, //TODO unimplemented
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Universe {
     #[serde(default)]
     time: f64,
@@ -34,35 +41,60 @@ impl Universe {
         Ok(())
     }
 
+    // Determines the kind of universe, based on the particles.
+    pub fn universe_kind(&self) -> UniverseKind {
+        if self.central_body.is_star() && self.orbiting_body.is_planet() {
+            UniverseKind::StarPlanet
+        } else if self.central_body.is_star() && self.orbiting_body.is_star() {
+            UniverseKind::BinaryStar
+        } else if self.central_body.is_planet() && self.orbiting_body.is_planet() {
+            UniverseKind::PlanetMoon
+        } else {
+            unreachable!()
+        }
+    }
+
+    // Creates a vector of initial quantities to be integrated for the particle.
+    fn integration_quantities_per_particle(particle: &Particle) -> Vec<f64> {
+        let mut vec = vec![];
+
+        match &particle.kind {
+            ParticleType::Star(star) => vec.append(&mut vec![
+                star.spin * star.radiative_moment_of_inertia,
+                star.spin * star.convective_moment_of_inertia,
+            ]),
+            ParticleType::Planet(planet) => {
+                // The actual integrated quantity is sma^6.5.
+                // See comment for planet_semi_major_axis_13_div_2_derivative
+                vec.append(&mut vec![planet.semi_major_axis.powf(6.5)]);
+
+                if particle.tides.kaula_enabled() {
+                    vec.append(&mut vec![
+                        planet.spin,
+                        // The actual integrated quantity is eccentricity^2 to avoid singularities when eccentricity goes to 0.
+                        planet.eccentricity.powi(2),
+                        planet.inclination,
+                        planet.longitude_ascending_node,
+                        planet.pericentre_omega,
+                        planet.spin_inclination,
+                    ]);
+                }
+            }
+        }
+
+        vec
+    }
+
     // Creates a vector of initial quantities to be integrated, depending on the simulation configuration.
     pub fn integration_quantities(&self) -> Vec<f64> {
         let mut vec = vec![];
-        if let ParticleType::Star(star) = &self.central_body.kind {
-            vec.append(&mut vec![
-                star.spin * star.radiative_moment_of_inertia,
-                star.spin * star.convective_moment_of_inertia,
-            ]);
-        }
 
-        if let ParticleType::Planet(planet) = &self.orbiting_body.kind {
-            vec.append(&mut vec![
-                // The actual integrated quantity is sma^6.5.
-                // See comment for fn planet_semi_major_axis_13_div_2_derivative
-                planet.semi_major_axis.powf(6.5),
-            ]);
-
-            if self.orbiting_body.tides.kaula_enabled() {
-                vec.append(&mut vec![
-                    planet.spin,
-                    // The actual integrated quantity is eccentricity^2 to avoid singularities when eccentricity goes to 0.
-                    planet.eccentricity.powi(2),
-                    planet.inclination,
-                    planet.longitude_ascending_node,
-                    planet.pericentre_omega,
-                    planet.spin_inclination,
-                ]);
-            }
-        }
+        vec.append(&mut Self::integration_quantities_per_particle(
+            &self.central_body,
+        ));
+        vec.append(&mut Self::integration_quantities_per_particle(
+            &self.orbiting_body,
+        ));
 
         vec
     }
@@ -75,57 +107,71 @@ impl Universe {
         self.time = time_in_seconds;
     }
 
-    // Update the planet and star values from the integrator prior to the derivation step.
-    pub(crate) fn update(&mut self, time: f64, y: &[f64]) -> Result<()> {
+    // Update routine for a Star Planet simulation.
+    fn update_star_planet(&mut self, y: &[f64]) -> Result<()> {
         // ***WARNING!***
         // Stateful function
         // The order of these calculations is important.
         // Lower order calculations depend on previous values.
         // ***WARNING!***
 
+        let &mut ParticleType::Star(ref mut star) = &mut self.central_body.kind else {
+            unreachable!()
+        };
+        let &mut ParticleType::Planet(ref mut planet) = &mut self.orbiting_body.kind else {
+            unreachable!()
+        };
+        // Update radiative zone (y[0]) and convective zone (y[1]) angular momentum
+        // and recompute independent values.
+        star.refresh(self.time, y[0], y[1], self.disk_is_dissipated)?;
+
+        // Nothing to compute if the planet is already destroyed.
+        if planet.is_destroyed {
+            return Ok(());
+        }
+
+        // Invert the exponent of sma^6.5 to normalise the semi major axis.
+        // Recompute planet values, including those depending on star.
+        planet.refresh(y[2].powf(2. / 13.), star);
+
+        // The planet may have been destroyed in the current iteration.
+        // No torques during disk lifetime.
+        if planet.is_destroyed || !self.disk_is_dissipated {
+            return Ok(());
+        }
+
+        // Recompute star values that depend on planet (tidal and magnetic torque).
+        star.refresh_tidal_frequency(planet);
+
+        // Compute the enabled effects (magnetism, stellar tides, stellar wind, planet tides)
+        star.update_wind_torque(self.central_body.wind.wind_torque());
+        star.update_tidal_torque(self.central_body.tides.tidal_torque(star, planet));
+        star.update_magnetic_torque(self.central_body.magnetism.magnetic_torque(planet, star)); // Requires wind torque to be calculated first.
+
+        if self.orbiting_body.tides.kaula_enabled() {
+            //(spin, eccentricity, inclination, longitude_ascending_node, pericentre_omega, spin_inclination)
+            // Invert the exponent of e^2 to normalise the eccentricity.
+            planet.refresh_orbital_elements(y[3], sqrt!(y[4]), y[5], y[6], y[7], y[8]);
+            // Recompute the kaula tidal effects.
+            self.orbiting_body
+                .tides
+                .refresh_kaula(self.time, star, planet)?;
+        }
+
+        Ok(())
+    }
+
+    // Update the planet and star values from the integrator prior to the derivation step.
+    pub(crate) fn update(&mut self, time: f64, y: &[f64]) -> Result<()> {
         // Set the time.
         self.update_time(time);
         // Calculate the dissipation status of the disk.
         self.disk_is_dissipated();
 
-        if let ParticleType::Star(star) = &mut self.central_body.kind {
-            // Update radiative zone (y[0]) and convective zone (y[1]) angular momentum
-            // and recompute independent values.
-            star.refresh(time, y[0], y[1], self.disk_is_dissipated)?;
-
-            if let ParticleType::Planet(planet) = &mut self.orbiting_body.kind {
-                // Nothing to compute if the planet is already destroyed.
-                if planet.is_destroyed {
-                    return Ok(());
-                }
-                // Invert the exponent of sma^6.5 to normalise the semi major axis.
-                // Recompute planet values, including those depending on star.
-                planet.refresh(y[2].powf(2. / 13.), star);
-
-                // The planet may have been destroyed in the current iteration.
-                // No torques during disk lifetime.
-                if planet.is_destroyed || !self.disk_is_dissipated {
-                    return Ok(());
-                }
-
-                // Recompute star values that depend on planet (tidal and magnetic torque).
-                star.refresh_tidal_frequency(planet);
-
-                // Compute the enabled effects (magnetism, stellar tides, stellar wind, planet tides)
-                star.update_wind_torque(self.central_body.wind.wind_torque());
-                star.update_tidal_torque(self.central_body.tides.tidal_torque(star, planet));
-                star.update_magnetic_torque(
-                    self.central_body.magnetism.magnetic_torque(planet, star),
-                ); // Requires wind torque to be calculated first.
-
-                if self.orbiting_body.tides.kaula_enabled() {
-                    //(spin, eccentricity, inclination, longitude_ascending_node, pericentre_omega, spin_inclination)
-                    // Invert the exponent of e^2 to normalise the eccentricity.
-                    planet.refresh_orbital_elements(y[3], sqrt!(y[4]), y[5], y[6], y[7], y[8]);
-                    // Recompute the kaula tidal effects.
-                    self.orbiting_body.tides.refresh_kaula(time, star, planet)?;
-                }
-            }
+        match self.universe_kind() {
+            UniverseKind::StarPlanet => self.update_star_planet(y)?,
+            UniverseKind::BinaryStar => todo!(),
+            UniverseKind::PlanetMoon => todo!(),
         }
 
         Ok(())
