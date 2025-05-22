@@ -103,22 +103,20 @@ impl Universe {
                 planet.refresh(y[2].powf(2. / 13.), star);
 
                 // The planet may have been destroyed in the current iteration.
-                if planet.is_destroyed {
-                    star.update_torques(0., 0.);
+                // No torques during disk lifetime.
+                if planet.is_destroyed || !self.disk_is_dissipated {
                     return Ok(());
                 }
 
-                // Compute the enabled effects (magnetism, stellar tides, planet tides)
-                if self.disk_is_dissipated {
-                    // Recompute star values that depend on planet (tidal and magnetic torque).
-                    star.refresh_tidal_frequency(planet);
-                    let tidal_torque = self.central_body.tides.tidal_torque(star, planet);
-                    let magnetic_torque = self.central_body.magnetism.magnetic_torque(planet, star);
-                    star.update_torques(tidal_torque, magnetic_torque);
-                } else {
-                    // No torques during disk lifetime.
-                    star.update_torques(0., 0.);
-                }
+                // Recompute star values that depend on planet (tidal and magnetic torque).
+                star.refresh_tidal_frequency(planet);
+
+                // Compute the enabled effects (magnetism, stellar tides, stellar wind, planet tides)
+                star.update_wind_torque(self.central_body.wind.wind_torque());
+                star.update_tidal_torque(self.central_body.tides.tidal_torque(star, planet));
+                star.update_magnetic_torque(
+                    self.central_body.magnetism.magnetic_torque(planet, star),
+                ); // Requires wind torque to be calculated first.
 
                 if self.orbiting_body.tides.kaula_enabled() {
                     //(spin, eccentricity, inclination, longitude_ascending_node, pericentre_omega, spin_inclination)

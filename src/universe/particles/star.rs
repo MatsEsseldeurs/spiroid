@@ -200,11 +200,15 @@ impl Star {
         self.convective_turnover_time = Self::convective_turnover_time(radiative_zone_mass_ratio);
         self.mass_transfer_envelope_to_core_torque = self.mass_transfer_envelope_to_core_torque(); // requires convective_radius, radiative_mass_derivative, spin
 
-        // TODO Might be possible to guard these calculations based on the tides (i.e. avoid unused calculations)
+        // Only used by tides and magnetism
         self.rossby = self.rossby(); // requires convective_turnover_time, spin
         self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
-        self.wind_torque = self.wind_torque(); // requires mass, radius
-        self.alfven_radius = self.alfven_radius_estimate(); // requires mass_loss_rate, wind_torque
+
+        // Zero the torques. They will be calculated if associated effects are enabled.
+        self.tidal_torque = 0.0;
+        self.magnetic_torque = 0.0;
+        self.wind_torque = 0.0;
+        self.alfven_radius = 0.0;
 
         Ok(())
     }
@@ -214,10 +218,23 @@ impl Star {
         self.tidal_frequency = self.tidal_frequency(planet);
     }
 
-    // Update the tidal and magnetic torque.
-    pub(crate) fn update_torques(&mut self, tidal_torque: f64, magnetic_torque: f64) {
+    // Update the tidal torque.
+    pub(crate) fn update_tidal_torque(&mut self, tidal_torque: f64) {
         self.tidal_torque = tidal_torque;
+    }
+
+    // Update the magnetic torque.
+    pub(crate) fn update_magnetic_torque(&mut self, magnetic_torque: f64) {
         self.magnetic_torque = magnetic_torque;
+    }
+
+    // Update the wind torque.
+    pub(crate) fn update_wind_torque(&mut self, enabled: bool) {
+        if enabled {
+            self.wind_torque = self.wind_torque(); // requires mass, radius
+            // alfven_radius is recalculated with the updated wind_torque
+            self.alfven_radius = self.alfven_radius_estimate(); // requires mass_loss_rate, wind_torque
+        }
     }
 
     fn dynamical_tide_dissipation(&self) -> f64 {

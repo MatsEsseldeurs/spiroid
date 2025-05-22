@@ -1,6 +1,6 @@
 use crate::constants::MAGNETIC_PERMEABILITY_OF_VACUUM;
-use crate::universe::effects::MagneticModel;
 use crate::universe::effects::tides::TidalModel;
+use crate::universe::effects::{MagneticModel, WindModel};
 pub(crate) mod planet;
 pub(crate) mod star;
 
@@ -22,6 +22,8 @@ pub struct Particle {
     pub tides: TidalModel,
     #[serde(default)]
     pub magnetism: MagneticModel,
+    #[serde(default)]
+    pub wind: WindModel,
 }
 
 // Common properties of both Star and Planet.

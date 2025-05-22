@@ -2,6 +2,7 @@ use super::*;
 use crate::universe::effects::magnetism::{IsothermalWind, MagneticModel};
 use crate::universe::effects::tides::TidalModel;
 use crate::universe::effects::tides::kaula::tests::test_kaula;
+use crate::universe::effects::wind::WindModel;
 use crate::universe::particles::planet::tests::{
     test_planet, test_planet_kaula, test_planet_magnetic,
 };
@@ -26,11 +27,13 @@ fn _force_magnetic() {
             kind: ParticleType::Planet(planet),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
+            wind: WindModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Wind(IsothermalWind::default()),
+            wind: WindModel::Enabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -62,11 +65,13 @@ fn _force_tides() {
             kind: ParticleType::Planet(planet),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
+            wind: WindModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::ConstantTimeLag(1e-6),
             magnetism: MagneticModel::Disabled,
+            wind: WindModel::Enabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -99,11 +104,13 @@ fn _force_magnetic_tides() {
             kind: ParticleType::Planet(planet),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
+            wind: WindModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::ConstantTimeLag(1e-6),
             magnetism: MagneticModel::Wind(IsothermalWind::default()),
+            wind: WindModel::Enabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -143,11 +150,13 @@ fn _force_kaula() {
                 kaula: test_kaula(),
             },
             magnetism: MagneticModel::Disabled,
+            wind: WindModel::Disabled,
         },
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::Disabled,
             magnetism: MagneticModel::Disabled,
+            wind: WindModel::Enabled,
         },
         time: TEST_TIME,
         disk_lifetime: TEST_DISK_LIFETIME,
@@ -199,7 +208,11 @@ fn _force2_magnetic_tides() {
     let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
     let tidal_torque = tides.tidal_torque(&star, &planet);
     let magnetic_torque = magnetism.magnetic_torque(&planet, &star);
-    star.update_torques(tidal_torque, magnetic_torque);
+    let wind_torque = WindModel::Enabled.wind_torque();
+
+    star.update_wind_torque(wind_torque);
+    star.update_tidal_torque(tidal_torque);
+    star.update_magnetic_torque(magnetic_torque);
 
     let result = planet_semi_major_axis_13_div_2_derivative(&planet, &star);
     let expected = -2.1307551258578705e44;
@@ -216,7 +229,11 @@ fn _force2_kaula() {
     let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
     let tidal_torque = tides.tidal_torque(&star, &planet);
     let magnetic_torque = magnetism.magnetic_torque(&planet, &star);
-    star.update_torques(tidal_torque, magnetic_torque);
+    let wind_torque = WindModel::Enabled.wind_torque();
+
+    star.update_wind_torque(wind_torque);
+    star.update_tidal_torque(tidal_torque);
+    star.update_magnetic_torque(magnetic_torque);
 
     let result = planet_semi_major_axis_13_div_2_derivative(&planet, &star);
     let expected = -1.984887979983568e44;
