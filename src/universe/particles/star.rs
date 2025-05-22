@@ -1,11 +1,11 @@
-pub(crate) mod star_csv;
+pub(crate) mod star_mesa_csv;
 use crate::constants::{
     GRAVITATIONAL, PI, ROSSBY_SATURATION, ROSSBY_SUN, SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY,
     SOLAR_MASS, SOLAR_MASS_LOSS_RATE, SOLAR_RADIUS, TWO_PI,
 };
 use crate::universe::particles::{ParticleT, Planet};
 use serde::{Deserialize, Serialize};
-pub use star_csv::StarCsv;
+pub use star_mesa_csv::StarCsv;
 use std::path::PathBuf;
 
 use anyhow::Result;
