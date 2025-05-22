@@ -26,6 +26,16 @@ pub struct Particle {
     pub wind: WindModel,
 }
 
+impl Particle {
+    pub fn is_star(&self) -> bool {
+        matches!(self.kind, ParticleType::Star(_))
+    }
+
+    pub fn is_planet(&self) -> bool {
+        matches!(self.kind, ParticleType::Planet(_))
+    }
+}
+
 // Common properties of both Star and Planet.
 // Enables making functions generic over impl ParticleT.
 pub trait ParticleT {
