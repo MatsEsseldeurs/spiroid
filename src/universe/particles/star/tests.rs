@@ -59,6 +59,8 @@ pub fn test_star() -> Star {
     )
     .unwrap();
 
+    star.update_wind_torque(true);
+
     star
 }
 
