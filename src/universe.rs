@@ -3,7 +3,7 @@ pub(crate) mod particles;
 pub(crate) mod physics;
 
 pub use effects::Kaula;
-pub use particles::{Particle, ParticleType, Planet, Star, StarCsv};
+pub use particles::{MesaCsv, Particle, ParticleType, Planet, Star, StarevolCsv};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

@@ -1,11 +1,13 @@
-pub(crate) mod star_csv;
+pub(crate) mod mesa_csv;
+pub(crate) mod starevol_csv;
 use crate::constants::{
     GRAVITATIONAL, PI, ROSSBY_SATURATION, ROSSBY_SUN, SECONDS_IN_YEAR, SOLAR_ANGULAR_VELOCITY,
     SOLAR_MASS, SOLAR_MASS_LOSS_RATE, SOLAR_RADIUS, TWO_PI,
 };
 use crate::universe::particles::{ParticleT, Planet};
+pub use mesa_csv::MesaCsv;
 use serde::{Deserialize, Serialize};
-pub use star_csv::StarCsv;
+pub use starevol_csv::StarevolCsv;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -15,7 +17,12 @@ use sci_file::Interpolator;
 enum Evolution {
     #[default]
     Disabled,
-    Interpolated {
+    Starevol {
+        star_file_path: PathBuf,
+        #[serde(skip)]
+        interpolator: Interpolator<Vec<f64>>,
+    },
+    Mesa {
         star_file_path: PathBuf,
         #[serde(skip)]
         interpolator: Interpolator<Vec<f64>>,
@@ -27,8 +34,11 @@ impl std::fmt::Debug for Evolution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Evolution::Disabled => write!(f, "Disabled"),
-            Evolution::Interpolated { star_file_path, .. } => {
-                write!(f, "Interpolated: \"{}\"", &star_file_path.display())
+            Evolution::Starevol { star_file_path, .. } => {
+                write!(f, "Starevol: \"{}\"", &star_file_path.display())
+            }
+            Evolution::Mesa { star_file_path, .. } => {
+                write!(f, "Mesa: \"{}\"", &star_file_path.display())
             }
         }
     }
@@ -117,21 +127,40 @@ impl Star {
         !matches!(self.evolution, Evolution::Disabled)
     }
 
+    // Returns `true` if evolution is Starevol.
+    pub fn starevol_evolution_enabled(&self) -> bool {
+        matches!(self.evolution, Evolution::Starevol { .. })
+    }
+
+    // Returns `true` if evolution is Mesa.
+    pub fn mesa_evolution_enabled(&self) -> bool {
+        matches!(self.evolution, Evolution::Mesa { .. })
+    }
+
     // Initialise stellar values from the stellar evolution file if evolution is interpolated.
     pub fn initialise_evolution(&mut self, star_ages: &[f64], star_values: &[Vec<f64>]) {
-        if let Evolution::Interpolated {
-            ref mut interpolator,
-            ..
-        } = self.evolution
-        {
-            interpolator.init(star_ages, star_values);
+        match self.evolution {
+            Evolution::Disabled => {}
+            Evolution::Starevol {
+                ref mut interpolator,
+                ..
+            }
+            | Evolution::Mesa {
+                ref mut interpolator,
+                ..
+            } => {
+                interpolator.init(star_ages, star_values);
+            }
         }
     }
 
     // Provide a reference to the stellar evolution file if evolution is interpolated.
     pub fn evolution_file(&mut self) -> Option<&PathBuf> {
         match self.evolution {
-            Evolution::Interpolated {
+            Evolution::Starevol {
+                ref star_file_path, ..
+            }
+            | Evolution::Mesa {
                 ref star_file_path, ..
             } => Some(star_file_path),
             Evolution::Disabled => None,
@@ -139,34 +168,99 @@ impl Star {
     }
 
     // Evolves the star by interpolating the stellar evolution values by time (if evolution is enabled).
-    fn stellar_evolution(&mut self, time: f64) -> Result<()> {
-        if let Evolution::Interpolated {
+    fn stellar_evolution(&mut self, time: f64, disk_is_dissipated: bool) -> Result<()> {
+        match self.evolution {
+            Evolution::Starevol { .. } => self.stellar_evolution_starevol(time, disk_is_dissipated),
+            Evolution::Mesa { .. } => self.stellar_evolution_mesa(time, disk_is_dissipated),
+            Evolution::Disabled => Ok(()),
+        }
+    }
+
+    fn stellar_evolution_starevol(&mut self, time: f64, disk_is_dissipated: bool) -> Result<()> {
+        let Evolution::Starevol {
             ref interpolator, ..
         } = self.evolution
-        {
-            let (age, values) = interpolator.interpolate(time)?;
-            // Update the star properties with the interpolated values.
-            self.age = age;
-            self.radius = values[1];
-            self.mass = values[2];
-            self.convective_radius = values[3];
-            self.convective_mass = values[4];
-            self.radiative_moment_of_inertia = values[5];
-            self.convective_moment_of_inertia = values[6];
-            self.luminosity = values[7];
-            self.radiative_mass_derivative = values[8];
-            self.convective_moment_of_inertia_derivative = values[9];
+        else {
+            unreachable!()
+        };
 
-            self.dynamical_tide_dissipation = self.dynamical_tide_dissipation();
+        let (age, values) = interpolator.interpolate(time)?;
+        // Update the star properties with the interpolated values.
+        self.age = age;
+        self.radius = values[1];
+        self.mass = values[2];
+        self.convective_radius = values[3];
+        self.convective_mass = values[4];
+        self.radiative_moment_of_inertia = values[5];
+        self.convective_moment_of_inertia = values[6];
+        self.luminosity = values[7];
+        self.radiative_mass_derivative = values[8];
+        self.convective_moment_of_inertia_derivative = values[9];
+
+        self.dynamical_tide_dissipation = self.dynamical_tide_dissipation();
+
+        // Update the spin only after the disk has dissipated.
+        if disk_is_dissipated {
+            self.spin = self.spin(); // requires convective_zone_angular_momentum, convective_moment_of_inertia
         }
+
+        self.angular_momentum_redistribution = self.angular_momentum_redistribution(); // requires convective_moment_of_inertia, radiative_moment_of_inertia, convective_zone_angular_momentum, radiative_zone_angular_momentum
+        self.mass_transfer_envelope_to_core_torque = self.mass_transfer_envelope_to_core_torque(); // requires convective_radius, radiative_mass_derivative, spin
+
+        // Only used by tides and magnetism
+        let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
+        self.convective_turnover_time = Self::convective_turnover_time(radiative_zone_mass_ratio);
+        self.rossby = self.rossby(); // requires convective_turnover_time, spin
+        self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
+
+        Ok(())
+    }
+
+    fn stellar_evolution_mesa(&mut self, time: f64, disk_is_dissipated: bool) -> Result<()> {
+        let Evolution::Mesa {
+            ref interpolator, ..
+        } = self.evolution
+        else {
+            unreachable!()
+        };
+
+        let (age, values) = interpolator.interpolate(time)?;
+        // Update the star properties with the interpolated values.
+        self.age = age;
+        self.radius = values[1];
+        self.mass = values[2];
+        self.convective_radius = values[3];
+        self.convective_mass = values[4];
+        self.radiative_moment_of_inertia = values[5];
+        self.convective_moment_of_inertia = values[6];
+        self.luminosity = values[7];
+        self.radiative_mass_derivative = values[8];
+        self.convective_moment_of_inertia_derivative = values[9];
+        self.core_envelope_coupling_constant = values[10];
+        self.mass_loss_rate = values[11];
+
+        self.dynamical_tide_dissipation = self.dynamical_tide_dissipation();
+
+        // Update the spin only after the disk has dissipated.
+        if disk_is_dissipated {
+            self.spin = self.spin(); // requires convective_zone_angular_momentum, convective_moment_of_inertia
+        }
+
+        self.angular_momentum_redistribution = self.angular_momentum_redistribution(); // requires convective_moment_of_inertia, radiative_moment_of_inertia, convective_zone_angular_momentum, radiative_zone_angular_momentum
+        self.mass_transfer_envelope_to_core_torque = self.mass_transfer_envelope_to_core_torque(); // requires convective_radius, radiative_mass_derivative, spin
+
+        // Only used by tides and magnetism
+        //        let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
+        //        self.convective_turnover_time = Self::convective_turnover_time(radiative_zone_mass_ratio);
+        //        self.rossby = self.rossby(); // requires convective_turnover_time, spin
+        //        self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
 
         Ok(())
     }
 
     pub(crate) fn initialise(&mut self, time: f64) -> Result<()> {
-        if let Evolution::Interpolated { .. } = self.evolution {
-            self.stellar_evolution(time)?;
-        }
+        let disk_is_dissipated = false;
+        self.stellar_evolution(time, disk_is_dissipated)?;
         // 0.02 is the convection zone mass of the Sun divided by its total mass.
         // Christensen-Dalsgaard et al. 1991
         self.convective_turnover_time_sun = Self::convective_turnover_time(0.02);
@@ -189,20 +283,25 @@ impl Star {
     ) -> Result<()> {
         self.radiative_zone_angular_momentum = radiative_zone_angular_momentum;
         self.convective_zone_angular_momentum = convective_zone_angular_momentum;
-        self.stellar_evolution(time)?;
-        // Update the spin only after the disk has dissipated.
-        if disk_is_dissipated {
-            self.spin = self.spin(); // requires convective_zone_angular_momentum, convective_moment_of_inertia
+        if self.evolution_enabled() {
+            self.stellar_evolution(time, disk_is_dissipated)?;
+        } else {
+            // Update the spin only after the disk has dissipated.
+            if disk_is_dissipated {
+                self.spin = self.spin(); // requires convective_zone_angular_momentum, convective_moment_of_inertia
+            }
+
+            self.angular_momentum_redistribution = self.angular_momentum_redistribution(); // requires convective_moment_of_inertia, radiative_moment_of_inertia, convective_zone_angular_momentum, radiative_zone_angular_momentum
+            self.mass_transfer_envelope_to_core_torque =
+                self.mass_transfer_envelope_to_core_torque(); // requires convective_radius, radiative_mass_derivative, spin
+
+            // Only used by tides and magnetism
+            let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
+            self.convective_turnover_time =
+                Self::convective_turnover_time(radiative_zone_mass_ratio);
+            self.rossby = self.rossby(); // requires convective_turnover_time, spin
+            self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
         }
-
-        self.angular_momentum_redistribution = self.angular_momentum_redistribution(); // requires convective_moment_of_inertia, radiative_moment_of_inertia, convective_zone_angular_momentum, radiative_zone_angular_momentum
-        let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
-        self.convective_turnover_time = Self::convective_turnover_time(radiative_zone_mass_ratio);
-        self.mass_transfer_envelope_to_core_torque = self.mass_transfer_envelope_to_core_torque(); // requires convective_radius, radiative_mass_derivative, spin
-
-        // Only used by tides and magnetism
-        self.rossby = self.rossby(); // requires convective_turnover_time, spin
-        self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
 
         // Zero the torques. They will be calculated if associated effects are enabled.
         self.tidal_torque = 0.0;

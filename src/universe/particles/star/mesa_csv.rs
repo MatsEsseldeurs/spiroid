@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 // Interpolation values deserialized from user provided CSV.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
-pub struct StarCsv {
+pub struct MesaCsv {
     age: f64,                          // (s)
     radius: f64,                       // (m)
     mass: f64,                         // (kg)
@@ -13,6 +13,9 @@ pub struct StarCsv {
     convective_moment_of_inertia: f64, // (kg.m2)
     luminosity: f64,                   // (J.s-1)
 
+    core_envelope_coupling_constant: f64,
+    mass_loss_rate: f64,
+    convective_turnover_time: f64,
     // Calculated internally, not included in the CSV.
     #[serde(skip)]
     convective_moment_of_inertia_derivative: f64,
@@ -20,7 +23,7 @@ pub struct StarCsv {
     radiative_mass_derivative: f64,
 }
 
-impl StarCsv {
+impl MesaCsv {
     pub fn initialise(stars: &mut [Self]) -> (Vec<f64>, Vec<Vec<f64>>) {
         stars.iter_mut().for_each(Self::convert_units);
         Self::compute_derivatives(stars);
@@ -31,7 +34,7 @@ impl StarCsv {
             .iter()
             .map(|starcsv| starcsv.age)
             .collect::<Vec<f64>>();
-        let rest = stars.iter().map(StarCsv::to_vec).collect::<Vec<Vec<f64>>>();
+        let rest = stars.iter().map(MesaCsv::to_vec).collect::<Vec<Vec<f64>>>();
 
         (ages, rest)
     }
@@ -46,6 +49,10 @@ impl StarCsv {
         self.convective_mass *= SOLAR_MASS;
         self.radiative_moment_of_inertia *= self.mass * self.radius.powi(2);
         self.convective_moment_of_inertia *= self.mass * self.radius.powi(2);
+
+        // TODO unit conversion
+        self.core_envelope_coupling_constant *= 1.;
+        self.mass_loss_rate *= 1.;
     }
 
     // Calcultes the radiative_mass_derivative and convective_moment_of_inertia_derivative for each record.

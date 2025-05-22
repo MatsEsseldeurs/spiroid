@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rayon::prelude::*;
 use sci_file::{read_csv_columns_from_file, read_csv_rows_from_dir, read_csv_rows_from_file};
-use spiroid_lib::{ParticleType, Simulation, StarCsv, Universe};
+use spiroid_lib::{MesaCsv, ParticleType, Simulation, StarevolCsv, Universe};
 
 fn main() -> Result<()> {
     let simulations = Simulation::<Universe>::new()?;
@@ -12,13 +12,24 @@ fn main() -> Result<()> {
             let final_time = simulation.final_time;
 
             if let ParticleType::Star(star) = &mut simulation.system.central_body.kind {
-                // Load stellar evolution data from file if stellar evolution is enabled.
-                if let Some(star_file) = star.evolution_file() {
-                    // Maps every row of the csv file into a `StarCsv`.
-                    let mut stellar_data = read_csv_rows_from_file::<StarCsv>(star_file)?;
-                    // Configure the stellar evolution interpolator.
-                    let (star_ages, star_values) = StarCsv::initialise(&mut stellar_data);
-                    star.initialise_evolution(&star_ages, &star_values);
+                if star.starevol_evolution_enabled() {
+                    // Load stellar evolution data from file if stellar evolution is enabled.
+                    if let Some(star_file) = star.evolution_file() {
+                        // Maps every row of the csv file into a `StarCsv`.
+                        let mut stellar_data = read_csv_rows_from_file::<StarevolCsv>(star_file)?;
+                        // Configure the stellar evolution interpolator.
+                        let (star_ages, star_values) = StarevolCsv::initialise(&mut stellar_data);
+                        star.initialise_evolution(&star_ages, &star_values);
+                    }
+                } else if star.mesa_evolution_enabled() {
+                    // Load stellar evolution data from file if stellar evolution is enabled.
+                    if let Some(star_file) = star.evolution_file() {
+                        // Maps every row of the csv file into a `StarCsv`.
+                        let mut stellar_data = read_csv_rows_from_file::<MesaCsv>(star_file)?;
+                        // Configure the stellar evolution interpolator.
+                        let (star_ages, star_values) = MesaCsv::initialise(&mut stellar_data);
+                        star.initialise_evolution(&star_ages, &star_values);
+                    }
                 }
             }
 

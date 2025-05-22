@@ -5,7 +5,7 @@ pub(crate) mod planet;
 pub(crate) mod star;
 
 pub use planet::Planet;
-pub use star::{Star, StarCsv};
+pub use star::{MesaCsv, Star, StarevolCsv};
 
 use serde::{Deserialize, Serialize};
 

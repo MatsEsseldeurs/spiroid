@@ -13,13 +13,25 @@ fn test_simulation(config: PathBuf) -> Universe {
     let mut config: InputConfig<Universe> = read_json_from_file(&config).unwrap();
     // Load stellar evolution data from file.
     if let ParticleType::Star(star) = &mut config.system.central_body.kind {
-        // Load stellar evolution data from file if stellar evolution is enabled.
-        if let Some(star_file) = star.evolution_file() {
-            let mut stellar_data = read_csv_rows_from_file::<StarCsv>(star_file).unwrap();
-            // Configure the stellar evolution interpolator.
-            let (star_ages, star_values) = StarCsv::initialise(&mut stellar_data);
-            star.initialise_evolution(&star_ages, &star_values);
-        };
+        if star.starevol_evolution_enabled() {
+            // Load stellar evolution data from file if stellar evolution is enabled.
+            if let Some(star_file) = star.evolution_file() {
+                // Maps every row of the csv file into a `StarCsv`.
+                let mut stellar_data = read_csv_rows_from_file::<StarevolCsv>(star_file).unwrap();
+                // Configure the stellar evolution interpolator.
+                let (star_ages, star_values) = StarevolCsv::initialise(&mut stellar_data);
+                star.initialise_evolution(&star_ages, &star_values);
+            }
+        } else if star.mesa_evolution_enabled() {
+            // Load stellar evolution data from file if stellar evolution is enabled.
+            if let Some(star_file) = star.evolution_file() {
+                // Maps every row of the csv file into a `StarCsv`.
+                let mut stellar_data = read_csv_rows_from_file::<MesaCsv>(star_file).unwrap();
+                // Configure the stellar evolution interpolator.
+                let (star_ages, star_values) = MesaCsv::initialise(&mut stellar_data);
+                star.initialise_evolution(&star_ages, &star_values);
+            }
+        }
     }
 
     // Load love number data from file(s) if kaula tides are enabled.
