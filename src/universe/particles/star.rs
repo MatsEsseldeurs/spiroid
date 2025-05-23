@@ -74,7 +74,7 @@ pub struct Star {
     pub(crate) angular_momentum_redistribution: f64,
     pub(crate) mass_transfer_envelope_to_core_torque: f64, // structural evolution
     pub(crate) rossby: f64,
-    mass_loss_rate: f64,
+    mass_loss_rate: f64, // (kg.s-1)
     magnetic_field: f64,
     pub(crate) wind_torque: f64,
     pub(crate) alfven_radius: f64,
@@ -83,6 +83,9 @@ pub struct Star {
     pub(crate) tidal_frequency: f64,
     pub(crate) magnetic_torque: f64,
     pub(crate) tidal_torque: f64,
+    pub(crate) evolved_wind_torque: f64,
+    // Additional mass loss rate during the evolved phase of the star.
+    evolved_mass_loss_rate: f64, // (kg.s-1)
 
     // Integration parameters
     pub(crate) convective_zone_angular_momentum: f64, // (kg.m^2.s-1)
@@ -236,8 +239,9 @@ impl Star {
         self.luminosity = values[7];
         self.radiative_mass_derivative = values[8];
         self.convective_moment_of_inertia_derivative = values[9];
-        self.core_envelope_coupling_constant = values[10];
-        self.mass_loss_rate = values[11];
+        self.convective_turnover_time = values[10];
+        self.core_envelope_coupling_constant = values[11];
+        self.evolved_mass_loss_rate = values[12];
 
         self.dynamical_tide_dissipation = self.dynamical_tide_dissipation();
 
@@ -252,8 +256,8 @@ impl Star {
         // Only used by tides and magnetism
         //        let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
         //        self.convective_turnover_time = Self::convective_turnover_time(radiative_zone_mass_ratio);
-        //        self.rossby = self.rossby(); // requires convective_turnover_time, spin
-        //        self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
+        self.rossby = self.rossby(); // requires convective_turnover_time, spin
+        self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
 
         Ok(())
     }
@@ -333,7 +337,15 @@ impl Star {
             self.wind_torque = self.wind_torque(); // requires mass, radius
             // alfven_radius is recalculated with the updated wind_torque
             self.alfven_radius = self.alfven_radius_estimate(); // requires mass_loss_rate, wind_torque
+            self.evolved_wind_torque = self.evolved_wind_torque(); // requires spin, evolved_mass_loss_rate, radius
         }
+    }
+
+    // Mass loss rate applicable during the evolved phases of the star.
+    // Dust wind torque
+    // Madappatt et al 2016 Eq 2
+    pub(crate) fn evolved_wind_torque(&mut self) -> f64 {
+        -2. / 3. * self.spin * self.evolved_mass_loss_rate * self.radius.powi(2)
     }
 
     fn dynamical_tide_dissipation(&self) -> f64 {
@@ -510,6 +522,7 @@ impl Star {
 pub mod tests;
 
 // References:
+// Madappatt et al, 2016, https://doi.org/10.1093/mnras/stw2025
 // Ardestani et al. 2017, https://doi.org/10.1093/mnras/stx2039
 // Benbakoura et al. 2019, https://doi.org/10.1051/0004-6361/201833314
 // Christensen-Dalsgaard et al. 1991 https://doi.org/10.1086/170441
