@@ -31,6 +31,8 @@ sys.dont_write_bytecode = True
 
 import glob
 import json
+from json import JSONDecodeError
+
 try:
     import lz4tools
 except ImportError:
@@ -71,8 +73,15 @@ def parse_jsonl(data):
     # Replace booleans with 0/1 so they can be plotted.
     lookup = {False: 0, True: 1}
 
-    for line in data:
-        data = json.loads(line)
+    for line_number, line in enumerate(data):
+        # Allow plotting of ongoing simulations that may have a truncated final line.
+        try:
+            data = json.loads(line)
+        except JSONDecodeError:
+            # Malformed data that wasn't the final line.
+            if line_number != len(data) - 1:
+                print(f"JSONDecodeError at line: {line_number}")
+            continue
         data = flatten(data)
         # Update the combined dictionary with the current JSON object
         for key, value in data.items():
