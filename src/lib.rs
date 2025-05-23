@@ -9,7 +9,7 @@ mod universe;
 mod utils;
 
 use universe::physics::force;
-pub use universe::{ParticleType, Planet, Star, StarCsv, Universe};
+pub use universe::{MesaCsv, ParticleType, Planet, Star, StarevolCsv, Universe};
 
 impl System for Universe {
     // This `derive` function is called by the integrator.

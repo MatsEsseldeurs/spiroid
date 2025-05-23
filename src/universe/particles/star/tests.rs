@@ -8,15 +8,15 @@ use pretty_assertions::assert_eq;
 use sci_file::read_csv_rows_from_file;
 
 fn add_interpolate_to_test_star(star: &mut Star) {
-    star.evolution = Evolution::Interpolated {
+    star.evolution = Evolution::Starevol {
         star_file_path: "examples/data/star/evolution/savgol_08.csv".into(),
         interpolator: Interpolator::new(),
     };
     // Load stellar evolution data from file.
     if let Some(star_file_path) = star.evolution_file() {
-        let mut stellar_data = read_csv_rows_from_file::<StarCsv>(star_file_path).unwrap();
+        let mut stellar_data = read_csv_rows_from_file::<StarevolCsv>(star_file_path).unwrap();
         // Configure the stellar evolution interpolator.
-        let (star_ages, star_values) = StarCsv::initialise(&mut stellar_data);
+        let (star_ages, star_values) = StarevolCsv::initialise(&mut stellar_data);
         star.initialise_evolution(&star_ages, &star_values);
     }
 }
@@ -58,6 +58,8 @@ pub fn test_star() -> Star {
         DISK_IS_DISSIPATED,
     )
     .unwrap();
+
+    star.update_wind_torque(true);
 
     star
 }

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 // Interpolation values deserialized from user provided CSV.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
-pub struct StarCsv {
+pub struct StarevolCsv {
     age: f64,                          // (s)
     radius: f64,                       // (m)
     mass: f64,                         // (kg)
@@ -20,7 +20,7 @@ pub struct StarCsv {
     radiative_mass_derivative: f64,
 }
 
-impl StarCsv {
+impl StarevolCsv {
     pub fn initialise(stars: &mut [Self]) -> (Vec<f64>, Vec<Vec<f64>>) {
         stars.iter_mut().for_each(Self::convert_units);
         Self::compute_derivatives(stars);
@@ -31,7 +31,10 @@ impl StarCsv {
             .iter()
             .map(|starcsv| starcsv.age)
             .collect::<Vec<f64>>();
-        let rest = stars.iter().map(StarCsv::to_vec).collect::<Vec<Vec<f64>>>();
+        let rest = stars
+            .iter()
+            .map(StarevolCsv::to_vec)
+            .collect::<Vec<Vec<f64>>>();
 
         (ages, rest)
     }

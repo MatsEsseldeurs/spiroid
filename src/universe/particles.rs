@@ -1,11 +1,11 @@
 use crate::constants::MAGNETIC_PERMEABILITY_OF_VACUUM;
-use crate::universe::effects::MagneticModel;
 use crate::universe::effects::tides::TidalModel;
+use crate::universe::effects::{MagneticModel, WindModel};
 pub(crate) mod planet;
 pub(crate) mod star;
 
 pub use planet::Planet;
-pub use star::{Star, StarCsv};
+pub use star::{MesaCsv, Star, StarevolCsv};
 
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +22,18 @@ pub struct Particle {
     pub tides: TidalModel,
     #[serde(default)]
     pub magnetism: MagneticModel,
+    #[serde(default)]
+    pub wind: WindModel,
+}
+
+impl Particle {
+    pub fn is_star(&self) -> bool {
+        matches!(self.kind, ParticleType::Star(_))
+    }
+
+    pub fn is_planet(&self) -> bool {
+        matches!(self.kind, ParticleType::Planet(_))
+    }
 }
 
 // Common properties of both Star and Planet.
