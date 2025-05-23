@@ -4,17 +4,17 @@ use serde::{Deserialize, Serialize};
 // Interpolation values deserialized from user provided CSV.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct MesaCsv {
-    age: f64,                          // (s)
-    radius: f64,                       // (m)
-    mass: f64,                         // (kg)
-    convective_radius: f64,            // (m)
-    convective_mass: f64,              // (kg)
-    radiative_moment_of_inertia: f64,  // (kg.m2)
-    convective_moment_of_inertia: f64, // (kg.m2)
-    luminosity: f64,                   // (J.s-1)
+    age: f64,                             // (s)
+    radius: f64,                          // (m)
+    mass: f64,                            // (kg)
+    convective_radius: f64,               // (m)
+    convective_mass: f64,                 // (kg)
+    radiative_moment_of_inertia: f64,     // (kg.m2)
+    convective_moment_of_inertia: f64,    // (kg.m2)
+    luminosity: f64,                      // (J.s-1)
+    convective_turnover_time: f64,        // (s)
     core_envelope_coupling_constant: f64, // (s)
-    convective_turnover_time: f64,   // (s)
-    mass_loss_rate: f64,                // (kg.s-1)
+    mass_loss_rate: f64,                  // (kg.s-1)
     // Calculated internally, not included in the CSV.
     #[serde(skip)]
     convective_moment_of_inertia_derivative: f64,
@@ -86,8 +86,8 @@ impl MesaCsv {
             self.luminosity,
             self.radiative_mass_derivative,
             self.convective_moment_of_inertia_derivative,
-            self.convective_turnover_timescale,
-            self.core_env_coupling_timescale,
+            self.convective_turnover_time,
+            self.core_envelope_coupling_constant,
             self.mass_loss_rate,
         ]
     }
