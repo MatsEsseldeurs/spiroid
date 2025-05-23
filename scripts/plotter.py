@@ -72,7 +72,11 @@ def parse_jsonl(data):
     lookup = {False: 0, True: 1}
 
     for line in data:
-        data = json.loads(line)
+        # Allow plotting of ongoing simulations that may have a truncated final line.
+        try:
+            data = json.loads(line)
+        except JSONDecodeError:
+            pass
         data = flatten(data)
         # Update the combined dictionary with the current JSON object
         for key, value in data.items():
