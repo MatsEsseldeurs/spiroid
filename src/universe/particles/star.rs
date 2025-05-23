@@ -315,7 +315,7 @@ impl Star {
     // Alfven radius estimate from the stellar wind torque and mass loss rate.
     // Benbakoura et al. 2019 Eq. 7
     fn alfven_radius_estimate(&self) -> f64 {
-        sqrt!(abs!(self.wind_torque) / (self.mass_loss_rate * self.spin))
+        sqrt!(abs!(self.wind_torque) / (self.mass_loss_rate * abs!(self.spin)))
     }
 
     // This is a re-write of Eq. 3 and 19 from Benbakoura et al. 2019
