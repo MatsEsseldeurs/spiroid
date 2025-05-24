@@ -10,12 +10,12 @@
 - magnetic interactions between star and planet following [Ahuir et al. 2021](https://doi.org/10.1051/0004-6361/201936974)
 - tide raised by the star in the planet following [Revol et al. 2023](https://doi.org/10.1051/0004-6361/202245790)
 
-
 The physics has been validated by the following contributors:
 
 - Stellar evolution and magnetic interaction by [Antoine Strugarek, CEA](https://tonione.github.io/antoinestrugarek.github.io/)
 - Stellar and planetary formulations by [Émeline Bolmont, UniGE](https://www.unige.ch/sciences/astro/exoplanets/en/team/faculty-members/emeline-bolmont/) and [Leon Ka-Wang Kwok, UniGE](https://www.unige.ch/sciences/astro/exoplanets/en/team/scientific-collaborators/kwok-leon/)
 - Tides in Kaula formalism by [Alexandre Revol, UniGE](https://www.unige.ch/sciences/astro/exoplanets/en/team/scientific-collaborators/revol-alexandre/)
+- Post main sequence stellar evolution and stellar winds [Mats Esseldeurs, KU Leuven](https://fys.kuleuven.be/ster/staff/phd-students/mats-esseldeurs)
 
 With all effects enabled, `spiroid` can simulate between `2e6` and `2e7` years per second (i.e. a simulation of `1e7` years completes in 0.5 seconds).
 
@@ -146,8 +146,9 @@ The following modes of operation can be toggled independently, in any combinatio
 > Note: Operation with both stellar evolution and planetary tides (kaula) disabled is untested.
 
 ### Stellar evolution (`Star`)
-Evolution of the star can be enabled by setting the `evolution` property of the `Star` to `Interpolated` and provide the appropriate data file.
-(e.g. `examples/data/star/evolution/savgol_08.csv`).
+Evolution of the star can be enabled by setting the `evolution` property of the `Star` to `Starevol` or `Mesa` and provide the appropriate data file.
+Source of data is typically from [STAREVOL](https://obswww.unige.ch/Research/evol/starevol/starevol.php) or [MESA](https://mesastar.org/) stellar models.
+(e.g. `examples/data/star/evolution/savgol_10.csv` or `examples/data/star/evolution/mesa_10.csv`).
 The format of the file must be CSV (Comma Separated Values) with the following header and fields: 
 
 - `age` (years)
@@ -158,6 +159,13 @@ The format of the file must be CSV (Comma Separated Values) with the following h
 - `radiative_moment_of_inertia`  (stellar mass * stellar radius^2)
 - `convective_moment_of_inertia` (stellar mass * stellar radius^2)
 - `luminosity` (solar luminosity)
+
+Additional fields, only required by MESA data files:
+
+- `convective_turnover_time` (seconds)
+- `core_envelope_coupling_constant` (seconds)
+- `mass_loss_rate ` mass loss rate duing the evolved phase (solar mass / year)
+
 
 ### Magnetism (`Particle`)
 Magnetic interaction (initiated by the star) can be toggled into the following states:
@@ -248,13 +256,12 @@ src
 - universe/particles.rs: Public interface for particles (`Star` and `Planet`) and generic `Particle` types.
 - universe/particles/planet.rs: `Planet` model. 
 - universe/particles/star.rs: `Star` model. 
-- universe/particles/star/star_csv.rs: Structure of the stellar evolution from `STAREVOL` models. 
+- universe/particles/star/star_csv.rs: Structure of the stellar evolution CSV from `STAREVOL` or `MESA` models.
 - utils.rs: Misc helper functions, precomputed factorial, etc.
 
 # Known issues and limitations
 
 - Due to issues with the integrator, certain simulations can become stuck in a seeminly endless loop when the timestep becomes too small. These have been observed with simulations enabling Kaula tides on the planet.
-- Data is output at every accepted timestep. Files can become quite large for long running simulations.
 - Simulations with both stellar evolution and planetary tides (kaula) disabled are untested.
 
 # Notes

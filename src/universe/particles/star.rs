@@ -15,7 +15,12 @@ use sci_file::Interpolator;
 enum Evolution {
     #[default]
     Disabled,
-    Interpolated {
+    Starevol {
+        star_file_path: PathBuf,
+        #[serde(skip)]
+        interpolator: Interpolator<Vec<f64>>,
+    },
+    Mesa {
         star_file_path: PathBuf,
         #[serde(skip)]
         interpolator: Interpolator<Vec<f64>>,
@@ -27,8 +32,11 @@ impl std::fmt::Debug for Evolution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Evolution::Disabled => write!(f, "Disabled"),
-            Evolution::Interpolated { star_file_path, .. } => {
-                write!(f, "Interpolated: \"{}\"", &star_file_path.display())
+            Evolution::Starevol { star_file_path, .. } => {
+                write!(f, "Starevol: \"{}\"", &star_file_path.display())
+            }
+            Evolution::Mesa { star_file_path, .. } => {
+                write!(f, "Mesa: \"{}\"", &star_file_path.display())
             }
         }
     }
@@ -64,7 +72,7 @@ pub struct Star {
     pub(crate) angular_momentum_redistribution: f64,
     pub(crate) mass_transfer_envelope_to_core_torque: f64, // structural evolution
     pub(crate) rossby: f64,
-    mass_loss_rate: f64,
+    mass_loss_rate: f64, // (kg.s-1)
     magnetic_field: f64,
     pub(crate) wind_torque: f64,
     pub(crate) alfven_radius: f64,
@@ -73,6 +81,9 @@ pub struct Star {
     pub(crate) tidal_frequency: f64,
     pub(crate) magnetic_torque: f64,
     pub(crate) tidal_torque: f64,
+    pub(crate) evolved_wind_torque: f64,
+    // Additional mass loss rate during the evolved phase of the star.
+    evolved_mass_loss_rate: f64, // (kg.s-1)
 
     // Integration parameters
     pub(crate) convective_zone_angular_momentum: f64, // (kg.m^2.s-1)
@@ -119,19 +130,28 @@ impl Star {
 
     // Initialise stellar values from the stellar evolution file if evolution is interpolated.
     pub fn initialise_evolution(&mut self, star_ages: &[f64], star_values: &[Vec<f64>]) {
-        if let Evolution::Interpolated {
-            ref mut interpolator,
-            ..
-        } = self.evolution
-        {
-            interpolator.init(star_ages, star_values);
+        match self.evolution {
+            Evolution::Disabled => {}
+            Evolution::Starevol {
+                ref mut interpolator,
+                ..
+            }
+            | Evolution::Mesa {
+                ref mut interpolator,
+                ..
+            } => {
+                interpolator.init(star_ages, star_values);
+            }
         }
     }
 
     // Provide a reference to the stellar evolution file if evolution is interpolated.
     pub fn evolution_file(&mut self) -> Option<&PathBuf> {
         match self.evolution {
-            Evolution::Interpolated {
+            Evolution::Starevol {
+                ref star_file_path, ..
+            }
+            | Evolution::Mesa {
                 ref star_file_path, ..
             } => Some(star_file_path),
             Evolution::Disabled => None,
@@ -140,33 +160,42 @@ impl Star {
 
     // Evolves the star by interpolating the stellar evolution values by time (if evolution is enabled).
     fn stellar_evolution(&mut self, time: f64) -> Result<()> {
-        if let Evolution::Interpolated {
-            ref interpolator, ..
-        } = self.evolution
-        {
-            let (age, values) = interpolator.interpolate(time)?;
-            // Update the star properties with the interpolated values.
-            self.age = age;
-            self.radius = values[1];
-            self.mass = values[2];
-            self.convective_radius = values[3];
-            self.convective_mass = values[4];
-            self.radiative_moment_of_inertia = values[5];
-            self.convective_moment_of_inertia = values[6];
-            self.luminosity = values[7];
-            self.radiative_mass_derivative = values[8];
-            self.convective_moment_of_inertia_derivative = values[9];
+        match self.evolution {
+            Evolution::Disabled => Ok(()),
+            Evolution::Mesa {
+                ref interpolator, ..
+            }
+            | Evolution::Starevol {
+                ref interpolator, ..
+            } => {
+                let (age, values) = interpolator.interpolate(time)?;
+                // Update the star properties with the interpolated values.
+                self.age = age;
+                self.radius = values[1];
+                self.mass = values[2];
+                self.convective_radius = values[3];
+                self.convective_mass = values[4];
+                self.radiative_moment_of_inertia = values[5];
+                self.convective_moment_of_inertia = values[6];
+                self.luminosity = values[7];
+                self.radiative_mass_derivative = values[8];
+                self.convective_moment_of_inertia_derivative = values[9];
 
-            self.dynamical_tide_dissipation = self.dynamical_tide_dissipation();
+                if matches!(self.evolution, Evolution::Mesa { .. }) {
+                    self.convective_turnover_time = values[10];
+                    self.core_envelope_coupling_constant = values[11];
+                    self.evolved_mass_loss_rate = values[12];
+                }
+
+                self.dynamical_tide_dissipation = self.dynamical_tide_dissipation();
+
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 
     pub(crate) fn initialise(&mut self, time: f64) -> Result<()> {
-        if let Evolution::Interpolated { .. } = self.evolution {
-            self.stellar_evolution(time)?;
-        }
+        self.stellar_evolution(time)?;
         // 0.02 is the convection zone mass of the Sun divided by its total mass.
         // Christensen-Dalsgaard et al. 1991
         self.convective_turnover_time_sun = Self::convective_turnover_time(0.02);
@@ -189,6 +218,7 @@ impl Star {
     ) -> Result<()> {
         self.radiative_zone_angular_momentum = radiative_zone_angular_momentum;
         self.convective_zone_angular_momentum = convective_zone_angular_momentum;
+
         self.stellar_evolution(time)?;
         // Update the spin only after the disk has dissipated.
         if disk_is_dissipated {
@@ -196,11 +226,14 @@ impl Star {
         }
 
         self.angular_momentum_redistribution = self.angular_momentum_redistribution(); // requires convective_moment_of_inertia, radiative_moment_of_inertia, convective_zone_angular_momentum, radiative_zone_angular_momentum
-        let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
-        self.convective_turnover_time = Self::convective_turnover_time(radiative_zone_mass_ratio);
         self.mass_transfer_envelope_to_core_torque = self.mass_transfer_envelope_to_core_torque(); // requires convective_radius, radiative_mass_derivative, spin
 
         // Only used by tides and magnetism
+        if !matches!(self.evolution, Evolution::Mesa { .. }) {
+            let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
+            self.convective_turnover_time =
+                Self::convective_turnover_time(radiative_zone_mass_ratio);
+        }
         self.rossby = self.rossby(); // requires convective_turnover_time, spin
         self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
 
@@ -234,6 +267,7 @@ impl Star {
             self.wind_torque = self.wind_torque(); // requires mass, radius
             // alfven_radius is recalculated with the updated wind_torque
             self.alfven_radius = self.alfven_radius_estimate(); // requires mass_loss_rate, wind_torque
+            self.evolved_wind_torque = self.evolved_wind_torque(); // requires spin, evolved_mass_loss_rate, radius
         }
     }
 
@@ -329,8 +363,15 @@ impl Star {
         }
     }
 
+    // Stellar wind torque during the evolved phases of the star.
+    // Dust wind torque
+    // Madappatt et al 2016, Eq. 2
+    fn evolved_wind_torque(&self) -> f64 {
+        -2. / 3. * self.spin * self.evolved_mass_loss_rate * self.radius.powi(2)
+    }
+
     // Alfven radius estimate from the stellar wind torque and mass loss rate.
-    // Benbakoura et al. 2019 Eq. 7
+    // Benbakoura et al. 2019, Eq. 7
     fn alfven_radius_estimate(&self) -> f64 {
         sqrt!(abs!(self.wind_torque) / (self.mass_loss_rate * abs!(self.spin)))
     }
@@ -400,9 +441,9 @@ impl Star {
         )
     }
 
+    // Tidal frequency for a coplanar circular orbit
+    // Efroimsky 2012, Eq. 103 (for l = m = 2, p = q = 0)
     fn tidal_frequency(&self, planet: &Planet) -> f64 {
-        // Tidal frequency for a coplanar circular orbit
-        // Eq. 103 of Efroimsky 2012, for l=m=2, p=q=0
         2. * (self.spin - planet.mean_motion)
     }
 }
@@ -417,6 +458,7 @@ pub mod tests;
 // Efroimsky 2012, https://doi.org/10.1007/s10569-011-9397-4
 // Finley et al. 2018 https://doi.org/10.3847/1538-4357/aad7b6
 // MacGregor & Brenner 1991, https://doi.org/10.1086/170269
+// Madappatt et al, 2016, https://doi.org/10.1093/mnras/stw2025
 // Mathis 2015, https://doi.org/10.1051/0004-6361/201526472
 // Matt et al. 2015, https://doi.org/10.1088/2041-8205/799/2/L23
 // Ogilvie 2013, https://doi.org/10.1093/mnras/sts362

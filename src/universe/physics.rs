@@ -54,6 +54,9 @@ pub(crate) fn force(dy: &mut [f64], universe: &mut Universe) -> Result<()> {
 }
 
 // Rate of change in the angular momentum in the convective zone.
+// Includes additional wind torque which is applicable
+// during the post main sequence of the star's evolution.
+
 // Ahuir et al. 2021, Eq. 2.
 fn star_convective_zone_angular_momentum_derivative(star: &Star, disk_is_dissipated: bool) -> f64 {
     // If the disk has not dissipated, the spin of the star has not evolved.
@@ -63,6 +66,8 @@ fn star_convective_zone_angular_momentum_derivative(star: &Star, disk_is_dissipa
     star.angular_momentum_redistribution / star.core_envelope_coupling_constant
         - star.mass_transfer_envelope_to_core_torque
         + star.wind_torque
+        // evolved_wind_torque should be zero if not in the post main sequence.
+        + star.evolved_wind_torque
         + star.magnetic_torque
         + star.tidal_torque
 }

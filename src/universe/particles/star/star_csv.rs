@@ -2,6 +2,7 @@ use crate::constants::{SECONDS_IN_YEAR, SOLAR_LUMINOSITY, SOLAR_MASS, SOLAR_RADI
 use serde::{Deserialize, Serialize};
 
 // Interpolation values deserialized from user provided CSV.
+// Source of data is typically from STAREVOL or MESA stellar models.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub struct StarCsv {
     age: f64,                          // (s)
@@ -12,6 +13,14 @@ pub struct StarCsv {
     radiative_moment_of_inertia: f64,  // (kg.m2)
     convective_moment_of_inertia: f64, // (kg.m2)
     luminosity: f64,                   // (J.s-1)
+
+    // Only provided by MESA data files.
+    #[serde(default)]
+    convective_turnover_time: f64, // (s)
+    #[serde(default)]
+    core_envelope_coupling_constant: f64, // (s)
+    #[serde(default)]
+    mass_loss_rate: f64, // (kg.s-1)
 
     // Calculated internally, not included in the CSV.
     #[serde(skip)]
@@ -46,6 +55,7 @@ impl StarCsv {
         self.convective_mass *= SOLAR_MASS;
         self.radiative_moment_of_inertia *= self.mass * self.radius.powi(2);
         self.convective_moment_of_inertia *= self.mass * self.radius.powi(2);
+        self.mass_loss_rate *= SOLAR_MASS / SECONDS_IN_YEAR;
     }
 
     // Calcultes the radiative_mass_derivative and convective_moment_of_inertia_derivative for each record.
@@ -83,6 +93,9 @@ impl StarCsv {
             self.luminosity,
             self.radiative_mass_derivative,
             self.convective_moment_of_inertia_derivative,
+            self.convective_turnover_time,
+            self.core_envelope_coupling_constant,
+            self.mass_loss_rate,
         ]
     }
 }

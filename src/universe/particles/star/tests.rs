@@ -8,7 +8,7 @@ use pretty_assertions::assert_eq;
 use sci_file::read_csv_rows_from_file;
 
 fn add_interpolate_to_test_star(star: &mut Star) {
-    star.evolution = Evolution::Interpolated {
+    star.evolution = Evolution::Starevol {
         star_file_path: "examples/data/star/evolution/savgol_08.csv".into(),
         interpolator: Interpolator::new(),
     };
@@ -79,6 +79,15 @@ fn _wind_torque() {
     let expected = -9.356968580603306e22;
     let star = test_star();
     let result = star.wind_torque();
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn _evolved_wind_torque() {
+    let expected = -7.119008297630572e27;
+    let mut star = test_star();
+    star.evolved_mass_loss_rate = 2.8612812361645612e16;
+    let result = star.evolved_wind_torque();
     assert_eq!(expected, result);
 }
 

@@ -15,11 +15,12 @@ fn test_simulation(config: PathBuf) -> Universe {
     if let ParticleType::Star(star) = &mut config.system.central_body.kind {
         // Load stellar evolution data from file if stellar evolution is enabled.
         if let Some(star_file) = star.evolution_file() {
+            // Maps every row of the csv file into a `StarCsv`.
             let mut stellar_data = read_csv_rows_from_file::<StarCsv>(star_file).unwrap();
             // Configure the stellar evolution interpolator.
             let (star_ages, star_values) = StarCsv::initialise(&mut stellar_data);
             star.initialise_evolution(&star_ages, &star_values);
-        };
+        }
     }
 
     // Load love number data from file(s) if kaula tides are enabled.
@@ -151,4 +152,10 @@ fn example_kaula_solid() {
 fn example_all_effects() {
     let result = test_simulation("examples/all_effects.conf".into());
     compare_or_create("examples/all_effects_expected.json", &result);
+}
+
+#[test]
+fn example_mesa() {
+    let result = test_simulation("examples/mesa.conf".into());
+    compare_or_create("examples/mesa_expected.json", &result);
 }
