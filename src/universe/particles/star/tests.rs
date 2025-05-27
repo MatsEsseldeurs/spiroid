@@ -35,7 +35,7 @@ pub fn test_star() -> Star {
     // The tolerance is very high: any value in range 4.7e5 to 9.3e5 will pass the existing tests.
     star.footpoint_conductance = 7.0e4;
     star.radius = 544588072.4685764;
-    star.convective_mass = 1.5048623991131647e30;
+    star.radiative_mass = 1.5048623991131647e30;
     star.convective_radius = 374606632.43479675;
 
     star.convective_moment_of_inertia = 1.0420137774656348e46;

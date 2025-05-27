@@ -58,7 +58,7 @@ pub struct Star {
     age: f64,               // (s)
     pub(crate) radius: f64, // (m)
     convective_radius: f64, // (m)
-    convective_mass: f64,   // (kg)
+    radiative_mass: f64,    // (kg)
     pub(crate) convective_moment_of_inertia_derivative: f64,
     pub(crate) convective_moment_of_inertia: f64, // (kg.m2)
     pub(crate) radiative_moment_of_inertia: f64,  // (kg.m2)
@@ -174,7 +174,7 @@ impl Star {
                 self.radius = values[1];
                 self.mass = values[2];
                 self.convective_radius = values[3];
-                self.convective_mass = values[4];
+                self.radiative_mass = values[4];
                 self.radiative_moment_of_inertia = values[5];
                 self.convective_moment_of_inertia = values[6];
                 self.luminosity = values[7];
@@ -230,9 +230,9 @@ impl Star {
 
         // Only used by tides and magnetism
         if !matches!(self.evolution, Evolution::Mesa { .. }) {
-            let radiative_zone_mass_ratio = (self.mass - self.convective_mass) / self.mass;
+            let convective_zone_mass_ratio = (self.mass - self.radiative_mass) / self.mass;
             self.convective_turnover_time =
-                Self::convective_turnover_time(radiative_zone_mass_ratio);
+                Self::convective_turnover_time(convective_zone_mass_ratio);
         }
         self.rossby = self.rossby(); // requires convective_turnover_time, spin
         self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
@@ -280,7 +280,7 @@ impl Star {
         // Mass aspect ratio
         // Both mass and radius aspect ratio can be zero before the convective core appears on the PMS
         // But it's only a problem if beta is zero (gamma has a 1/beta), so the 1e-20 is there to prevent NaNs
-        let beta = max!(1E-20_f64, self.convective_mass / self.mass);
+        let beta = max!(1E-20_f64, self.radiative_mass / self.mass);
         // Gamma parameter from Mathis 2015, Eq.2
         let gamma = max!(
             1E-20_f64,

@@ -9,7 +9,7 @@ pub struct StarCsv {
     radius: f64,                       // (m)
     mass: f64,                         // (kg)
     convective_radius: f64,            // (m)
-    convective_mass: f64,              // (kg)
+    radiative_mass: f64,              // (kg)
     radiative_moment_of_inertia: f64,  // (kg.m2)
     convective_moment_of_inertia: f64, // (kg.m2)
     luminosity: f64,                   // (J.s-1)
@@ -52,7 +52,7 @@ impl StarCsv {
         self.mass *= SOLAR_MASS;
         self.luminosity *= SOLAR_LUMINOSITY;
         self.convective_radius *= SOLAR_RADIUS;
-        self.convective_mass *= SOLAR_MASS;
+        self.radiative_mass *= SOLAR_MASS;
         self.radiative_moment_of_inertia *= self.mass * self.radius.powi(2);
         self.convective_moment_of_inertia *= self.mass * self.radius.powi(2);
         self.mass_loss_rate *= SOLAR_MASS / SECONDS_IN_YEAR;
@@ -74,7 +74,7 @@ impl StarCsv {
                 unreachable!()
             };
             curr.radiative_mass_derivative =
-                (next.convective_mass - prev.convective_mass) / (next.age - prev.age);
+                (next.radiative_mass - prev.radiative_mass) / (next.age - prev.age);
             curr.convective_moment_of_inertia_derivative = (next.convective_moment_of_inertia
                 - prev.convective_moment_of_inertia)
                 / (next.age - prev.age);
@@ -87,7 +87,7 @@ impl StarCsv {
             self.radius,
             self.mass,
             self.convective_radius,
-            self.convective_mass,
+            self.radiative_mass,
             self.radiative_moment_of_inertia,
             self.convective_moment_of_inertia,
             self.luminosity,
