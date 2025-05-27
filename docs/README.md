@@ -155,7 +155,7 @@ The format of the file must be CSV (Comma Separated Values) with the following h
 - `radius` (solar radius)
 - `mass` (solar mass)
 - `convective_radius` (solar radius)
-- `convective_mass` (solar mass)
+- `radiative_mass` (solar mass)
 - `radiative_moment_of_inertia`  (stellar mass * stellar radius^2)
 - `convective_moment_of_inertia` (stellar mass * stellar radius^2)
 - `luminosity` (solar luminosity)
