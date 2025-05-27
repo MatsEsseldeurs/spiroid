@@ -83,6 +83,15 @@ fn _wind_torque() {
 }
 
 #[test]
+fn _evolved_wind_torque() {
+    let expected = -7.119008297630572e27;
+    let mut star = test_star();
+    star.evolved_mass_loss_rate = 2.8612812361645612e16;
+    let result = star.evolved_wind_torque();
+    assert_eq!(expected, result);
+}
+
+#[test]
 fn _mass_transfer_envelope_to_core_torque() {
     let expected = 2.80767781316852e21;
     let star = test_star();
