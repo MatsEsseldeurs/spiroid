@@ -70,7 +70,7 @@ fn star_convective_zone_angular_momentum_derivative(star: &Star, disk_is_dissipa
         // evolved_wind_torque should be zero if not in the post main sequence.
         + star.evolved_wind_torque
         + star.magnetic_torque
-        + star.tidal_torque
+        + star.tidal_torque_convective
 }
 
 // Rate of change in the angular momentum in the radiative zone.
@@ -90,7 +90,7 @@ pub(crate) fn planet_semi_major_axis_13_div_2_derivative(planet: &Planet, star: 
     -13. * sqrt!((star.mass + planet.mass) / GRAVITATIONAL)
         * (1. / (star.mass * planet.mass))
         * planet.semi_major_axis.powi(6)
-        * (star.magnetic_torque + star.tidal_torque)
+        * (star.magnetic_torque + star.tidal_torque_convective)
 }
 
 // Semi-major axis derivative.

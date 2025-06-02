@@ -80,7 +80,7 @@ pub struct Star {
     tidal_quality: f64,
     pub(crate) tidal_frequency: f64,
     pub(crate) magnetic_torque: f64,
-    pub(crate) tidal_torque: f64,
+    pub(crate) tidal_torque_convective: f64,
     pub(crate) evolved_wind_torque: f64,
     // Additional mass loss rate during the evolved phase of the star.
     evolved_mass_loss_rate: f64, // (kg.s-1)
@@ -244,7 +244,7 @@ impl Star {
         }
 
         // Zero the torques. They will be calculated if associated effects are enabled.
-        self.tidal_torque = 0.0;
+        self.tidal_torque_convective = 0.0;
         self.magnetic_torque = 0.0;
         self.wind_torque = 0.0;
         self.alfven_radius = 0.0;
@@ -258,8 +258,8 @@ impl Star {
     }
 
     // Update the tidal torque.
-    pub(crate) fn update_tidal_torque(&mut self, tidal_torque: f64) {
-        self.tidal_torque = tidal_torque;
+    pub(crate) fn update_tidal_torque(&mut self, tidal_torque_convective: f64) {
+        self.tidal_torque_convective = tidal_torque_convective;
     }
 
     // Update the magnetic torque.
@@ -395,8 +395,8 @@ impl Star {
     // This is a re-write of Eq. 3 and 19 from Benbakoura et al. 2019
     // without the factors that are in the function semi_major_axis_13_div_2_derivative in physics.rs
     // The a^-6 is here to compensate the a^6 in physics.rs
-    pub fn tidal_torque_ctl(&self, equilibrium_tide_dissipation: f64, planet: &Planet) -> f64 {
-        let tidal_quality = self.tidal_quality(equilibrium_tide_dissipation);
+    pub fn tidal_torque_ctl(&self, sigma_bar_star: f64, planet: &Planet) -> f64 {
+        let tidal_quality = self.tidal_quality(sigma_bar_star);
         // Smoothing parameter when tidal frequency is 0
         let depth = 1E-08;
         -(9. / 4.)
@@ -409,7 +409,7 @@ impl Star {
     }
 
     // Calculates the equivalent tidal quality factor as in Mathis 2015 and Bolmont & Mathis 2016.
-    pub fn tidal_quality(&self, equilibrium_tide_dissipation: f64) -> f64 {
+    pub fn tidal_quality(&self, sigma_bar_star: f64) -> f64 {
         // Epsilon to ensure that equilibrium_tide_quality_factors stays finite
         let epsilon_secure = 1.0E-10;
         // Epsilon to ensure a smooth transition equilibrium / dynamical tide
@@ -422,7 +422,7 @@ impl Star {
         // This is Eq. 22 of Benbakoura et al. 2019
         let equilibrium_tide_quality_factors = GRAVITATIONAL
             / (abs!(self.tidal_frequency + epsilon_secure)
-                * equilibrium_tide_dissipation
+                * sigma_bar_star
                 * normalisation_constant
                 * self.radius.powi(5));
 
