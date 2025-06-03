@@ -145,6 +145,7 @@ impl Universe {
 
         // Compute the enabled effects (magnetism, stellar tides, stellar wind, planet tides)
         star.update_wind_torque(self.central_body.wind.wind_torque());
+        star.update_evolved_wind_orbit_torque(self.central_body.wind.wind_torque(), planet);
         star.update_tidal_torque(self.central_body.tides.tidal_torque(star, planet));
         star.update_magnetic_torque(self.central_body.magnetism.magnetic_torque(planet, star)); // Requires wind torque to be calculated first.
 
