@@ -11,7 +11,6 @@ pub struct Planet {
     pub(crate) mass: f64,            // Kg
     pub(crate) radius: f64,          // m
     pub(crate) semi_major_axis: f64, // m
-    pub(crate) is_destroyed: bool,   // ()
     pub(crate) magnetic_field: f64,  // (T)
 
     // Input parameters, only if kaula tides enabled.
@@ -32,6 +31,17 @@ pub struct Planet {
 
     // Calculated internally, only if kaula tides enabled.
     pub(crate) moment_of_inertia: f64, // kg.m^2
+
+    // TODO remove from input parameter.
+    #[serde(default)]
+    is_destroyed: bool, // ()
+    // The integrator may cause the planet to be destroyed
+    // during a rejected step, in which case the destruction
+    // needs to be revertible.
+    // So the planet is set only to temporarily destroyed
+    // until the integration step is accepted.
+    #[serde(skip)]
+    temporarily_destroyed: bool, // ()
 }
 
 impl ParticleT for Planet {
@@ -83,6 +93,13 @@ impl Planet {
     // Lower order calculations depend on previous values.
     // ***WARNING!***
     pub(crate) fn refresh(&mut self, semi_major_axis: f64, star: &impl ParticleT) {
+        // Clear the previous temporary destruction flag.
+        self.temporarily_destroyed = false;
+        // If the planet is permanently destroyed, nothing more to compute.
+        if self.is_destroyed() {
+            return;
+        }
+
         self.semi_major_axis = semi_major_axis;
         self.mean_motion = self.mean_motion(star.mass());
         self.density_ratio = self.density_ratio(star.mass(), star.radius());
@@ -92,7 +109,7 @@ impl Planet {
 
         // Destroy the planet if it is too close to the star (or negative semi major axis).
         if self.crossed_orbital_lower_limit() {
-            self.destroy();
+            self.temporarily_destroyed = true;
         }
     }
 
@@ -171,20 +188,18 @@ impl Planet {
         self.semi_major_axis.is_nan() || (self.semi_major_axis <= self.orbit_lower_limit)
     }
 
-    // Destroy the planet. No further interaction is possible.
-    fn destroy(&mut self) {
-        self.is_destroyed = true;
-        self.mass = 0.0;
-        self.radius = 0.0;
-        self.semi_major_axis = 0.0;
-        self.mean_motion = 0.0;
-        self.roche_limit = 0.0;
-        self.mean_motion = 0.0;
-        self.density_ratio = 0.0;
-        self.magnetic_pressure = 0.0;
-        self.roche_limit = 0.0;
-        self.orbit_lower_limit = 0.0;
-        self.density_ratio = 0.0;
+    // Tests whether the planet exists.
+    pub fn is_destroyed(&self) -> bool {
+        self.temporarily_destroyed || self.is_destroyed
+    }
+
+    // Permanently destroy the planet. No further interaction is possible.
+    pub fn destroy(&mut self) {
+        if !self.is_destroyed && self.crossed_orbital_lower_limit() {
+            *self = Self::default();
+            self.temporarily_destroyed = true;
+            self.is_destroyed = true;
+        }
     }
 }
 

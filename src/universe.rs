@@ -126,7 +126,7 @@ impl Universe {
         star.refresh(self.time, y[0], y[1], self.disk_is_dissipated)?;
 
         // Nothing to compute if the planet is already destroyed.
-        if planet.is_destroyed {
+        if planet.is_destroyed() {
             return Ok(());
         }
 
@@ -136,7 +136,7 @@ impl Universe {
 
         // The planet may have been destroyed in the current iteration.
         // No torques during disk lifetime.
-        if planet.is_destroyed || !self.disk_is_dissipated {
+        if planet.is_destroyed() || !self.disk_is_dissipated {
             return Ok(());
         }
 
@@ -175,6 +175,19 @@ impl Universe {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn clear_destroyed_particles(&mut self) {
+        match self.universe_kind() {
+            UniverseKind::StarPlanet => {
+                let &mut ParticleType::Planet(ref mut planet) = &mut self.orbiting_body.kind else {
+                    unreachable!()
+                };
+                planet.destroy();
+            }
+            UniverseKind::BinaryStar => todo!(),
+            UniverseKind::PlanetMoon => todo!(),
+        }
     }
 }
 

@@ -20,7 +20,12 @@ impl MagneticModel {
         match self {
             MagneticModel::Disabled => 0.0,
             MagneticModel::Wind(wind) => {
-                if planet.magnetic_pressure == 0.0
+                // Avoid performing magnetic torque calculation if:
+                // - the planet is destroyed, or
+                // - the planet has no magnetic field, or
+                // - the planet is too far away from the star
+                if planet.is_destroyed()
+                    || planet.magnetic_pressure == 0.0
                     || !planet.inside_alfven_radius(star.alfven_radius)
                 {
                     0.0

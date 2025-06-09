@@ -22,14 +22,15 @@ impl System for Universe {
         dy: &mut [f64],
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Update the state of the universe based on the current integration values.
-        self.update(time, y)?;
+        Universe::update(self, time, y)?;
         // Compute the derivatives using the updated values.
         force(dy, self)?;
 
         Ok(())
     }
 
-    // Update the state of the universe, prior to derivation or solution output.
+    // Update the state of the universe, prior to solution output.
+    // Only called after successful integration step(s).
     fn update(
         &mut self,
         time: f64,
@@ -37,6 +38,8 @@ impl System for Universe {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Update the state of the universe based on the current integration values.
         Universe::update(self, time, y)?;
+        // Permanently clear destroyed particles.
+        Universe::clear_destroyed_particles(self);
 
         Ok(())
     }
