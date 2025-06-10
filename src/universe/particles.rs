@@ -7,6 +7,7 @@ pub(crate) mod star;
 pub use planet::Planet;
 pub use star::{Star, StarCsv};
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -21,24 +22,33 @@ pub struct Particle {
     #[serde(default)]
     pub tides: TidalModel,
     #[serde(default)]
-    pub magnetism: MagneticModel,
+    pub(crate) magnetism: MagneticModel,
     #[serde(default)]
-    pub wind: WindModel,
+    pub(crate) wind: WindModel,
 }
 
 impl Particle {
-    pub fn is_star(&self) -> bool {
+    pub(crate) fn is_star(&self) -> bool {
         matches!(self.kind, ParticleType::Star(_))
     }
 
-    pub fn is_planet(&self) -> bool {
+    pub(crate) fn is_planet(&self) -> bool {
         matches!(self.kind, ParticleType::Planet(_))
+    }
+
+    pub(crate) fn initialise(&mut self, time: f64) -> Result<()> {
+        match &mut self.kind {
+            ParticleType::Star(star) => star.initialise(time)?,
+            ParticleType::Planet(planet) => planet.initialise(),
+        }
+
+        Ok(())
     }
 }
 
 // Common properties of both Star and Planet.
 // Enables making functions generic over impl ParticleT.
-pub trait ParticleT {
+pub(crate) trait ParticleT {
     fn semi_major_axis(&self) -> f64;
     fn mass(&self) -> f64;
     fn radius(&self) -> f64;
@@ -50,6 +60,6 @@ pub trait ParticleT {
 }
 
 // https://en.wikipedia.org/wiki/Magnetic_pressure
-pub fn magnetic_pressure(magnetic_field: f64) -> f64 {
+pub(crate) fn magnetic_pressure(magnetic_field: f64) -> f64 {
     magnetic_field.powi(2) / (2. * MAGNETIC_PERMEABILITY_OF_VACUUM)
 }

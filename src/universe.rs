@@ -27,16 +27,14 @@ pub struct Universe {
 }
 
 impl Universe {
-    #[allow(clippy::missing_errors_doc)]
-    // Apply the unit conversions to initial input values.
+    /// Initialise the `Star` and `Planet`.
+    /// # Errors
+    ///
+    /// Will return `Err` if evolution is enabled on the `Star`(s)
+    /// and time is outside of the interpolation range.
     pub fn initialise(&mut self, time: f64) -> Result<()> {
-        if let ParticleType::Star(star) = &mut self.central_body.kind {
-            star.initialise(time)?;
-        }
-
-        if let ParticleType::Planet(planet) = &mut self.orbiting_body.kind {
-            planet.initialise();
-        }
+        self.central_body.initialise(time)?;
+        self.orbiting_body.initialise(time)?;
 
         Ok(())
     }
