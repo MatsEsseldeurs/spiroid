@@ -221,7 +221,7 @@ impl IsothermalWind {
             velocity -= energy_flux_difference / d_energy_flux_by_dv;
 
             while velocity <= 0. {
-                velocity = (previous_speed_over_sound_speed + velocity) / 2.;
+                velocity = f64::midpoint(previous_speed_over_sound_speed, velocity);
             }
 
             energy_flux_difference = self.total_energy_flux_minus_constant(
@@ -352,7 +352,7 @@ impl IsothermalWind {
 
             while current_alfven_speed <= 0. {
                 // New value of alfven_speed_at_alfven_radius when the Alfven speed is negative.
-                current_alfven_speed = (previous_alfven_speed + current_alfven_speed) / 2.;
+                current_alfven_speed = f64::midpoint(previous_alfven_speed, current_alfven_speed);
             }
 
             integration_constant = 0.5
@@ -445,7 +445,7 @@ impl IsothermalWind {
 
                 while speed_over_sound_speed <= 0. {
                     speed_over_sound_speed =
-                        (previous_speed_over_sound_speed + speed_over_sound_speed) / 2.;
+                        f64::midpoint(previous_speed_over_sound_speed, speed_over_sound_speed);
                 }
             }
 

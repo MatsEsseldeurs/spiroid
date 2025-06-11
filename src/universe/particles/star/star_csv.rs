@@ -9,7 +9,7 @@ pub struct StarCsv {
     radius: f64,                       // (m)
     mass: f64,                         // (kg)
     convective_radius: f64,            // (m)
-    radiative_mass: f64,              // (kg)
+    radiative_mass: f64,               // (kg)
     radiative_moment_of_inertia: f64,  // (kg.m2)
     convective_moment_of_inertia: f64, // (kg.m2)
     luminosity: f64,                   // (J.s-1)
