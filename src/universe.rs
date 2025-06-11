@@ -125,20 +125,12 @@ impl Universe {
         // and recompute independent values.
         star.refresh(self.time, y[0], y[1], self.disk_is_dissipated)?;
 
-        star.update_wind_torque(self.central_body.wind.wind_torque());
-
-        // Nothing to compute if the planet is already destroyed.
-        if planet.is_destroyed {
-            return Ok(());
-        }
-
         // Invert the exponent of sma^6.5 to normalise the semi major axis.
         // Recompute planet values, including those depending on star.
         planet.refresh(y[2].powf(2. / 13.), star);
 
-        // The planet may have been destroyed in the current iteration.
         // No torques during disk lifetime.
-        if planet.is_destroyed || !self.disk_is_dissipated {
+        if !self.disk_is_dissipated {
             return Ok(());
         }
 
@@ -146,6 +138,13 @@ impl Universe {
         star.refresh_tidal_frequency(planet);
 
         // Compute the enabled effects (magnetism, stellar tides, stellar wind, planet tides)
+        star.update_wind_torque(self.central_body.wind.wind_torque());
+
+        // The planet may have been destroyed in the current iteration.
+        if planet.is_destroyed() {
+            return Ok(());
+        }
+        // Tidal and magnetic effects only apply while the planet exists.
         star.update_evolved_wind_orbit_torque(self.central_body.wind.wind_torque(), planet);
         star.update_tidal_torque(self.central_body.tides.tidal_torque(star, planet));
         star.update_magnetic_torque(self.central_body.magnetism.magnetic_torque(planet, star)); // Requires wind torque to be calculated first.
@@ -177,6 +176,19 @@ impl Universe {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn clear_destroyed_particles(&mut self) {
+        match self.universe_kind() {
+            UniverseKind::StarPlanet => {
+                let &mut ParticleType::Planet(ref mut planet) = &mut self.orbiting_body.kind else {
+                    unreachable!()
+                };
+                planet.destroy();
+            }
+            UniverseKind::BinaryStar => todo!(),
+            UniverseKind::PlanetMoon => todo!(),
+        }
     }
 }
 

@@ -19,7 +19,7 @@ pub(crate) fn force(dy: &mut [f64], universe: &mut Universe) -> Result<()> {
     dy[1] = star_convective_zone_angular_momentum_derivative(star, universe.disk_is_dissipated);
 
     // If the planet is destroyed, only the star derivatives are computed.
-    if planet.is_destroyed {
+    if planet.is_destroyed() {
         return Ok(());
     }
 
