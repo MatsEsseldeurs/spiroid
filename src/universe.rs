@@ -27,16 +27,14 @@ pub struct Universe {
 }
 
 impl Universe {
-    #[allow(clippy::missing_errors_doc)]
-    // Apply the unit conversions to initial input values.
+    /// Initialise the `Star` and `Planet`.
+    /// # Errors
+    ///
+    /// Will return `Err` if evolution is enabled on the `Star`(s)
+    /// and time is outside of the interpolation range.
     pub fn initialise(&mut self, time: f64) -> Result<()> {
-        if let ParticleType::Star(star) = &mut self.central_body.kind {
-            star.initialise(time)?;
-        }
-
-        if let ParticleType::Planet(planet) = &mut self.orbiting_body.kind {
-            planet.initialise();
-        }
+        self.central_body.initialise(time)?;
+        self.orbiting_body.initialise(time)?;
 
         Ok(())
     }
@@ -134,17 +132,18 @@ impl Universe {
             return Ok(());
         }
 
-        // Recompute star values that depend on planet (tidal and magnetic torque).
-        star.refresh_tidal_frequency(planet);
-
-        // Compute the enabled effects (magnetism, stellar tides, stellar wind, planet tides)
+        // Compute the stellar wind torque (if enabled).
         star.update_wind_torque(self.central_body.wind.wind_torque());
 
-        // The planet may have been destroyed in the current iteration.
+        // No planetary torques after the planet is destroyed.
         if planet.is_destroyed() {
             return Ok(());
         }
-        // Tidal and magnetic effects only apply while the planet exists.
+
+        // Recompute star values that depend on planet (tidal and magnetic torque).
+        star.refresh_tidal_frequency(planet);
+
+        // Compute the enabled effects (magnetism, stellar tides, planet tides)
         star.update_evolved_wind_orbit_torque(self.central_body.wind.wind_torque(), planet);
         star.update_tidal_torque(self.central_body.tides.tidal_torque(star, planet));
         star.update_magnetic_torque(self.central_body.magnetism.magnetic_torque(planet, star)); // Requires wind torque to be calculated first.
