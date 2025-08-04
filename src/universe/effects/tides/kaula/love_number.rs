@@ -161,7 +161,7 @@ impl LoveNumber {
     }
 
     fn imaginary_solid(&self, freq: f64) -> Result<f64> {
-        if let 0.0 = freq {
+        if freq == 0.0 {
             Ok(0.0)
         } else {
             let (_, im_k2) = self.imaginary_solid.interpolate(abs!(freq))?;
@@ -170,7 +170,7 @@ impl LoveNumber {
     }
 
     fn imaginary_oceanic(&self, freq: f64) -> Result<f64> {
-        if let 0.0 = freq {
+        if freq == 0.0 {
             Ok(0.0)
         } else {
             let (_, im_k2) = self.imaginary_oceanic.interpolate(abs!(freq))?;
@@ -189,7 +189,7 @@ impl LoveNumber {
         #[allow(clippy::cast_sign_loss)]
         let index = (time / 1.0E9 / SECONDS_IN_YEAR) as usize * 10 - 10;
         let love_interpolator = &self.love_interpolator[index];
-        if let 0.0 = freq {
+        if freq == 0.0 {
             Ok(0.0)
         } else {
             let (_, im_k2) = love_interpolator.interpolate(abs!(freq))?;

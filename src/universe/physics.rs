@@ -124,8 +124,8 @@ fn planet_eccentricity_derivative(planet: &Planet, star: &Star, kaula: &Kaula) -
         -2.0 * sqrt!(GRAVITATIONAL * (star.mass + planet.mass))
             * (planet.radius.powi(5) / planet.semi_major_axis.powf(6.5))
             * (star.mass / planet.mass)
-            * sqrt!(1.0 - planet.eccentricity.powi(2))
-            * kaula.summation_of_longitudinal_modes_eccentricity(planet.eccentricity)
+            * planet.semi_minor_axis_ratio
+            * kaula.summation_of_longitudinal_modes_eccentricity(planet.semi_minor_axis_ratio)
     }
 }
 
@@ -133,18 +133,13 @@ fn planet_eccentricity_derivative(planet: &Planet, star: &Star, kaula: &Kaula) -
 // Boue & Efroimksy (2019) Eq. 118 and Revol et al. (2023) Eq A.7
 // The inclination refers to the angle between the orbital planet and the planet's equatorial plane (i.e. obliquity)
 fn planet_inclination_derivative(planet: &Planet, star: &Star, kaula: &Kaula) -> f64 {
-    if sin!(planet.inclination) == 0.0 {
+    if planet.sin_inc == 0.0 {
         0.0
     } else {
-        let beta = (star.mass * planet.mass) / (star.mass + planet.mass);
-        let term1 = (beta * planet.mean_motion.powi(2) * planet.semi_major_axis.powi(2))
-            / (planet.moment_of_inertia * planet.spin);
-        let term3 = planet.mean_motion / sqrt!(1. - planet.eccentricity.powi(2));
-
-        (1. / sin!(planet.inclination))
+        (1. / planet.sin_inc)
             * (star.mass / planet.mass)
             * (planet.radius / planet.semi_major_axis).powi(5)
-            * kaula.summation_of_longitudinal_modes_inclination(planet.inclination, term1, term3)
+            * kaula.summation_of_longitudinal_modes_inclination(planet)
     }
 }
 
@@ -154,67 +149,28 @@ fn planet_longitude_ascending_node_derivative(planet: &Planet, star: &Star, kaul
     if (planet.inclination == 0.) || (planet.spin_inclination == 0.) {
         0.0
     } else {
-        let beta = (star.mass * planet.mass) / (star.mass + planet.mass);
-        let term1 = (1. / (planet.moment_of_inertia * planet.spin * tan!(planet.inclination)))
-            - (cos!(planet.longitude_ascending_node)
-                / (planet.moment_of_inertia * planet.spin * tan!(planet.spin_inclination)))
-            + (1.
-                / (beta
-                    * planet.mean_motion
-                    * planet.semi_major_axis.powi(2)
-                    * sqrt!(1. - planet.eccentricity.powi(2))
-                    * sin!(planet.inclination)));
-
-        let term2 = -(sin!(planet.longitude_ascending_node) * cotan!(planet.inclination))
-            / (planet.moment_of_inertia * planet.spin * tan!(planet.spin_inclination));
-        let term3 = sin!(planet.longitude_ascending_node)
-            / (planet.moment_of_inertia
-                * planet.spin
-                * tan!(planet.spin_inclination)
-                * sin!(planet.inclination));
-
         ((GRAVITATIONAL * star.mass.powi(2) * planet.radius.powi(5))
             / planet.semi_major_axis.powi(6))
-            * kaula.summation_of_longitudinal_modes_longitude_ascending_node(term1, term2, term3)
+            * kaula.summation_of_longitudinal_modes_longitude_ascending_node(planet)
     }
 }
 
 // Longitude of pericentre derivative.
 // Boue & Efroimksy (2019) Eq. 120 and Revol et al. (2023) Eq A.11
 fn planet_argument_pericentre_derivative(planet: &Planet, star: &Star, kaula: &Kaula) -> f64 {
-    if (planet.eccentricity == 0.)
-        && ((planet.inclination == 0.) || (planet.spin_inclination == 0.))
-    {
-        // no eccentricity and no inclination.
-        return 0.0;
-    }
-
-    let beta = (star.mass * planet.mass) / (star.mass + planet.mass);
-
     // inclination
-    let summation_of_longitudinal_modes_pericentre_inclination = if planet.inclination == 0. {
-        0.
-    } else {
-        let term1 = -((1. / (planet.moment_of_inertia * planet.spin * sin!(planet.inclination)))
-            + (1.
-                / (planet.mean_motion
-                    * planet.semi_major_axis.powi(2)
-                    * sqrt!(1. - planet.eccentricity.powi(2))
-                    * tan!(planet.inclination)
-                    * beta)));
-        kaula.summation_of_longitudinal_modes_pericentre_inclination(
-            planet.inclination,
-            planet.spin_inclination,
-        ) * term1
-    };
+    let summation_of_longitudinal_modes_pericentre_inclination =
+        if planet.inclination == 0. || planet.spin_inclination == 0. {
+            0.
+        } else {
+            kaula.summation_of_longitudinal_modes_pericentre_inclination(planet)
+        };
 
     // eccentricity
     let summation_of_longitudinal_modes_pericentre_eccentricity = if planet.eccentricity == 0. {
         0.
     } else {
-        let term2 = sqrt!(1. - planet.eccentricity.powi(2))
-            / (planet.mean_motion * planet.semi_major_axis.powi(2) * planet.eccentricity * beta);
-        kaula.summation_of_longitudinal_modes_pericentre_eccentricity(planet.eccentricity) * term2
+        kaula.summation_of_longitudinal_modes_pericentre_eccentricity(planet)
     };
 
     ((GRAVITATIONAL * star.mass.powi(2) * planet.radius.powi(5)) / planet.semi_major_axis.powi(6))
@@ -232,10 +188,7 @@ fn planet_spin_axis_inclination_derivative(planet: &Planet, star: &Star, kaula: 
     } else {
         (GRAVITATIONAL * star.mass.powi(2) * planet.radius.powi(5))
             / (planet.semi_major_axis.powi(6) * planet.moment_of_inertia * planet.spin)
-            * kaula.summation_of_longitudinal_modes_spin_axis_inclination(
-                planet.longitude_ascending_node,
-                planet.inclination,
-            )
+            * kaula.summation_of_longitudinal_modes_spin_axis_inclination(planet)
     }
 }
 

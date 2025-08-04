@@ -12,7 +12,7 @@ use crate::universe::{Particle, ParticleType};
 use pretty_assertions::assert_eq;
 
 #[test]
-fn _force_magnetic() {
+fn _derivatives_magnetic() {
     let star = test_star_evolving();
     let planet = test_planet_magnetic();
 
@@ -51,7 +51,7 @@ fn _force_magnetic() {
 }
 
 #[test]
-fn _force_tides() {
+fn _derivatives_tides() {
     let star = test_star_evolving();
     let planet = test_planet();
 
@@ -89,7 +89,7 @@ fn _force_tides() {
 }
 
 #[test]
-fn _force_magnetic_tides() {
+fn _derivatives_magnetic_tides() {
     let star = test_star_evolving();
     let planet = test_planet_magnetic();
 
@@ -128,7 +128,7 @@ fn _force_magnetic_tides() {
 }
 
 #[test]
-fn _force_kaula() {
+fn _derivatives_kaula() {
     let star = test_star();
     let planet = test_planet_kaula();
     let y = [
@@ -180,7 +180,7 @@ fn _force_kaula() {
 }
 
 #[test]
-fn _force0() {
+fn _star_radiative_zone_angular_momentum_derivative() {
     let mut star = test_star();
     let planet = test_planet();
     star.refresh_tidal_frequency(&planet);
@@ -190,7 +190,7 @@ fn _force0() {
 }
 
 #[test]
-fn _force1() {
+fn _star_convective_zone_angular_momentum_derivative() {
     let mut star = test_star();
     let planet = test_planet();
     star.refresh_tidal_frequency(&planet);
@@ -200,7 +200,7 @@ fn _force1() {
 }
 
 #[test]
-fn _force2_magnetic_tides() {
+fn _planet_semi_major_axis_13_div_2_derivative() {
     let mut star = test_star();
     let planet = test_planet_magnetic();
     star.refresh_tidal_frequency(&planet);
@@ -220,7 +220,7 @@ fn _force2_magnetic_tides() {
 }
 
 #[test]
-fn _force2_kaula() {
+fn _kaula_planet_semi_major_axis_13_div_2_derivative() {
     let mut star = test_star();
     let planet = test_planet_kaula();
     star.refresh_tidal_frequency(&planet);
@@ -235,13 +235,15 @@ fn _force2_kaula() {
     star.update_tidal_torque(tidal_torque);
     star.update_magnetic_torque(magnetic_torque);
 
-    let result = planet_semi_major_axis_13_div_2_derivative(&planet, &star);
-    let expected = -1.984887979983568e44;
+    let kaula = test_kaula();
+
+    let result = kaula_planet_semi_major_axis_13_div_2_derivative(&planet, &star, &kaula);
+    let expected = -2.3102674836008928e52;
     assert_eq!(expected, result);
 }
 
 #[test]
-fn _force4() {
+fn _planet_spin_derivative() {
     let mut star = test_star();
     let planet = test_planet_kaula();
     star.refresh_tidal_frequency(&planet);
@@ -252,7 +254,7 @@ fn _force4() {
 }
 
 #[test]
-fn _force5() {
+fn _planet_eccentricity_derivative() {
     let mut star = test_star();
     let planet = test_planet_kaula();
     star.refresh_tidal_frequency(&planet);
@@ -263,7 +265,7 @@ fn _force5() {
 }
 
 #[test]
-fn _force6() {
+fn _planet_inclination_derivative() {
     let mut star = test_star();
     let planet = test_planet_kaula();
     star.refresh_tidal_frequency(&planet);
@@ -274,7 +276,7 @@ fn _force6() {
 }
 
 #[test]
-fn _force7() {
+fn _planet_longitude_ascending_node_derivative() {
     let mut star = test_star();
     let planet = test_planet_kaula();
     star.refresh_tidal_frequency(&planet);
@@ -285,7 +287,7 @@ fn _force7() {
 }
 
 #[test]
-fn _force8() {
+fn _planet_argument_pericentre_derivative() {
     let mut star = test_star();
     let planet = test_planet_kaula();
     star.refresh_tidal_frequency(&planet);
@@ -296,7 +298,7 @@ fn _force8() {
 }
 
 #[test]
-fn _force9() {
+fn _planet_spin_axis_inclination_derivative() {
     let mut star = test_star();
     let planet = test_planet_kaula();
     star.refresh_tidal_frequency(&planet);
