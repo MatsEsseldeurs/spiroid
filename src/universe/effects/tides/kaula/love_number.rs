@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use anyhow::Result;
+use num_complex::Complex;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
 pub enum ParticleComposition {
@@ -83,23 +84,70 @@ impl LoveNumber {
     ) -> Result<()> {
         self.real.clear();
         self.imaginary.clear();
-        for q in 0..=14 {
+
+        let mut k2_re;
+        let mut k2_im;
+
+        // This internal cache acts as an allocation free hash table, where the index (key) is derived from (q_fac, m) and value is the k2
+        //  for the relevant tidal frequency.
+        // If the array value is zero, the cache is assumed to not been filled. Tidal frequency of zero is not calculated,
+        //  so the false cache miss is insignificant.
+        // There are 19 possible q_fac values (-9..=9) for each m value (0..=2)
+        // This cache means only 48 calculations are done for the full 135 (q = 15 * p = 3 * m = 3) iterations of the loop.
+        // It is 48 and not 57 because of the cases where m == 0 share a cache spot with other values, albeit with inverted sign
+        //  (which are adjusted for below).
+        let mut internal_cache = [Complex::from(0.); 19 * 3];
+        //        for q in 0..=14 {
+        for q in -7..=7 {
             for p in 0..3 {
-                let q_fac = f64!((2 - 2 * p) + q - 7);
+                let q_fac: i32 = (2 - 2 * p) + q;
                 for m in 0..3 {
-                    let w_2lmpq = planet.mean_motion() * q_fac - (planet.spin() * f64!(m));
                     // Loop is organised so arrays are filled in order: index == 0..=135
-                    self.real.push(self.real_part(w_2lmpq, particle_type)?);
-                    self.imaginary.push(self.imaginary_part(
-                        time,
-                        w_2lmpq,
-                        planet,
-                        star,
-                        particle_type,
-                    )?);
+                    // Cases where m is zero produce tidal frequencies that are already cached, except with the opposite sign.
+                    let (new_q_fac, invert) = {
+                        if m == 0 && q_fac.is_positive() {
+                            (-q_fac, true)
+                        } else {
+                            (q_fac, false)
+                        }
+                    };
+
+                    // Perform cache lookup
+                    // Sign loss not applicable since the values are in [-9..9]
+                    #[allow(clippy::cast_sign_loss)]
+                    let index = (new_q_fac + 9) as usize + m * 19;
+                    let k2 = internal_cache[index];
+
+                    // Truncation not applicable since the values are in [0..3).
+                    #[allow(clippy::cast_possible_truncation)]
+                    if k2 == Complex::from(0.) {
+                        // Cache miss
+                        let w_2lmpq = planet.mean_motion() * f64!(new_q_fac)
+                            - (planet.spin() * f64!(m as u32));
+
+                        // Compute k2
+                        k2_re = self.real_part(w_2lmpq, particle_type)?;
+                        k2_im = self.imaginary_part(time, w_2lmpq, planet, star, particle_type)?;
+
+                        // Add to cache
+                        internal_cache[index] = Complex::new(k2_re, k2_im);
+                    } else {
+                        // Cache hit
+                        k2_re = k2.re;
+                        k2_im = k2.im;
+                    }
+
+                    if invert {
+                        k2_im = -k2_im;
+                    }
+
+                    // Add to lookup tables
+                    self.real.push(k2_re);
+                    self.imaginary.push(k2_im);
                 }
             }
         }
+
         Ok(())
     }
 
