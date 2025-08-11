@@ -8,7 +8,7 @@ mod polynomials;
 use love_number::{LoveNumber, ParticleComposition};
 use polynomials::Polynomials;
 
-use crate::universe::particles::ParticleT;
+use crate::universe::particles::{ParticleT, Planet};
 use crate::utils::{factorial, kronecker_delta};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
@@ -21,6 +21,14 @@ pub struct Kaula {
     polynomials: Polynomials,
     #[serde(skip)]
     love_number: LoveNumber,
+
+    //cache
+    #[serde(skip)]
+    sum_over_m_real_2pq_2mp_dt: f64,
+    #[serde(skip)]
+    sum_over_m_imaginary_mfactor: f64,
+    #[serde(skip)]
+    sum_over_m_imaginary_pfactor: f64,
 }
 
 impl Kaula {
@@ -82,6 +90,22 @@ impl Kaula {
             .refresh_cache(planet.eccentricity(), planet.inclination());
         self.love_number
             .refresh_cache(time, planet, star, &self.particle_type)?;
+
+        if planet.inclination() != 0.0 {
+            self.sum_over_m_real_2pq_2mp_dt = self.sum_over_m_real(
+                &self.polynomials.eccentricity_2pq_squared,
+                &self.polynomials.inclination_2mp_squared_derivative,
+            );
+            self.sum_over_m_imaginary_mfactor = self.sum_over_m_imaginary_mfactor(
+                &self.polynomials.eccentricity_2pq_squared,
+                &self.polynomials.inclination_2mp_squared,
+            );
+            self.sum_over_m_imaginary_pfactor = self.sum_over_m_imaginary_pfactor(
+                &self.polynomials.eccentricity_2pq_squared,
+                &self.polynomials.inclination_2mp_squared,
+            );
+        }
+
         Ok(())
     }
 
@@ -127,7 +151,10 @@ impl Kaula {
     #[allow(clippy::cast_possible_wrap)]
     // Summation over longitudinal modes m for the computation of the eccentricity derivative.
     // Boue & Efroimksy (2019) Eq 117 and Revol et al. (2023) Eq A.3
-    pub(crate) fn summation_of_longitudinal_modes_eccentricity(&self, eccentricity: f64) -> f64 {
+    pub(crate) fn summation_of_longitudinal_modes_eccentricity(
+        &self,
+        semi_minor_axis_ratio: f64,
+    ) -> f64 {
         let outer = &self.polynomials.inclination_2mp_squared;
         let inner = &self.polynomials.eccentricity_2pq_squared;
 
@@ -139,7 +166,7 @@ impl Kaula {
                 let p_factor = (2 - 2 * (p as isize)) as f64;
                 for (q, q_val) in p_val.iter().enumerate() {
                     let q_factor = p_factor + (q as f64 - 7.);
-                    let term = q_factor * sqrt!(1.0 - eccentricity.powi(2)) - p_factor;
+                    let term = q_factor * semi_minor_axis_ratio - p_factor;
                     let imk2 = self.love_number.imaginary(m, p, q);
                     sum_over_q += imk2 * q_val * term;
                 }
@@ -156,12 +183,12 @@ impl Kaula {
     #[allow(clippy::cast_possible_wrap)]
     // Summation over longitudinal modes m for the computation of the inclination derivative.
     // by Boue & Efroimksy (2019) Eq 118 and Revol et al. (2023) Eq A.7
-    pub(crate) fn summation_of_longitudinal_modes_inclination(
-        &self,
-        inclination: f64,
-        term1: f64,
-        term3: f64,
-    ) -> f64 {
+    pub(crate) fn summation_of_longitudinal_modes_inclination(&self, planet: &Planet) -> f64 {
+        let term1 =
+            (planet.reduced_mass * planet.mean_motion.powi(2) * planet.semi_major_axis.powi(2))
+                / (planet.moment_of_inertia * planet.spin);
+        let term3 = planet.mean_motion / planet.semi_minor_axis_ratio;
+
         let outer = &self.polynomials.inclination_2mp_squared;
         let inner = &self.polynomials.eccentricity_2pq_squared;
 
@@ -177,8 +204,8 @@ impl Kaula {
                 }
                 sum_over_p += sum_over_q
                     * m_val[p]
-                    * (term1 * (m as f64 * cos!(inclination) - p_factor)
-                        - ((p_factor * cos!(inclination) - m as f64) * term3));
+                    * (term1 * (m as f64 * planet.cos_inc - p_factor)
+                        - ((p_factor * planet.cos_inc - m as f64) * term3));
             }
             sum_over_m +=
                 sum_over_p * (factorial(2 - m) / factorial(2 + m)) * (2. - kronecker_delta(m, 0));
@@ -192,29 +219,32 @@ impl Kaula {
         term2: f64,
         term3: f64,
     ) -> f64 {
-        (self.sum_over_m_real(
-            &self.polynomials.eccentricity_2pq_squared,
-            &self.polynomials.inclination_2mp_squared_derivative,
-        ) * term1
-            * 0.5)
-            + (self.sum_over_m_imaginary_mfactor(
-                &self.polynomials.eccentricity_2pq_squared,
-                &self.polynomials.inclination_2mp_squared,
-            ) * term2)
-            + (self.sum_over_m_imaginary_pfactor(
-                &self.polynomials.eccentricity_2pq_squared,
-                &self.polynomials.inclination_2mp_squared,
-            ) * term3)
+        (self.sum_over_m_real_2pq_2mp_dt * term1 * 0.5)
+            + (self.sum_over_m_imaginary_mfactor * term2)
+            + (self.sum_over_m_imaginary_pfactor * term3)
     }
 
     // Summation over longitudinal modes m for the computation of the longitude of ascending node derivative.
     // Boue & Efroimksy (2019) Eq 121 and Revol et al. (2023) Eq A.9
     pub(crate) fn summation_of_longitudinal_modes_longitude_ascending_node(
         &self,
-        term1: f64,
-        term2: f64,
-        term3: f64,
+        planet: &Planet,
     ) -> f64 {
+        let term1 = (1. / (planet.moment_of_inertia * planet.spin * planet.tan_inc))
+            - (planet.cos_lan / (planet.moment_of_inertia * planet.spin * planet.tan_spin_inc))
+            + (1.
+                / (planet.reduced_mass
+                    * planet.mean_motion
+                    * planet.semi_major_axis.powi(2)
+                    * planet.semi_minor_axis_ratio
+                    * planet.sin_inc));
+
+        let term2 = -(planet.sin_lan * cotan!(planet.inclination))
+            / (planet.moment_of_inertia * planet.spin * planet.tan_spin_inc);
+
+        let term3 = planet.sin_lan
+            / (planet.moment_of_inertia * planet.spin * planet.tan_spin_inc * planet.sin_inc);
+
         self.summation_of_longitudinal_modes_triple_common(term1, term2, term3)
     }
 
@@ -222,12 +252,11 @@ impl Kaula {
     // Boue & Efroimksy (2019) Eq 122 and Revol et al. (2023) Eq A.12
     pub(crate) fn summation_of_longitudinal_modes_spin_axis_inclination(
         &self,
-        longitude_ascending_node: f64,
-        inclination: f64,
+        planet: &Planet,
     ) -> f64 {
-        let term1 = -sin!(longitude_ascending_node);
-        let term2 = cos!(longitude_ascending_node) * 1. / tan!(inclination);
-        let term3 = -(cos!(longitude_ascending_node) / sin!(inclination));
+        let term1 = -planet.sin_lan;
+        let term2 = planet.cos_lan / planet.tan_inc;
+        let term3 = -(planet.cos_lan / planet.sin_inc);
 
         self.summation_of_longitudinal_modes_triple_common(term1, term2, term3)
     }
@@ -236,33 +265,34 @@ impl Kaula {
     // Boue & Efroimksy (2019) Eq 120 and Revol et al. (2023) Eq A.11
     pub(crate) fn summation_of_longitudinal_modes_pericentre_eccentricity(
         &self,
-        eccentricity: f64,
+        planet: &Planet,
     ) -> f64 {
-        if eccentricity == 0. {
-            0.0
-        } else {
-            self.sum_over_m_real(
-                &self.polynomials.eccentricity_2pq_squared_derivative,
-                &self.polynomials.inclination_2mp_squared,
-            ) * 0.5
-        }
+        let term2 = planet.semi_minor_axis_ratio
+            / (planet.mean_motion
+                * planet.semi_major_axis.powi(2)
+                * planet.eccentricity
+                * planet.reduced_mass);
+        self.sum_over_m_real(
+            &self.polynomials.eccentricity_2pq_squared_derivative,
+            &self.polynomials.inclination_2mp_squared,
+        ) * 0.5
+            * term2
     }
 
     // Summation over longitudinal modes m for the computation of the inclination dependent longitude of pericentre derivative.
     // Boue & Efroimksy (2019) Eq 120 and Revol et al. (2023) Eq A.11
     pub(crate) fn summation_of_longitudinal_modes_pericentre_inclination(
         &self,
-        inclination: f64,
-        spin_inclination: f64,
+        planet: &Planet,
     ) -> f64 {
-        if (inclination == 0.) || (spin_inclination == 0.) {
-            0.0
-        } else {
-            self.sum_over_m_real(
-                &self.polynomials.eccentricity_2pq_squared,
-                &self.polynomials.inclination_2mp_squared_derivative,
-            ) * 0.5
-        }
+        let term1 = -((1. / (planet.moment_of_inertia * planet.spin * planet.sin_inc))
+            + (1.
+                / (planet.mean_motion
+                    * planet.semi_major_axis.powi(2)
+                    * planet.semi_minor_axis_ratio
+                    * planet.tan_inc
+                    * planet.reduced_mass)));
+        self.sum_over_m_real_2pq_2mp_dt * 0.5 * term1
     }
 
     // Iteration over the provided 2D arrays (outer 3x15 and inner 3x3), summing the contents of:

@@ -37,18 +37,26 @@ pub fn test_planet() -> Planet {
 #[cfg(test)]
 pub fn test_planet_kaula() -> Planet {
     let mut planet = test_planet_base();
-    planet.spin = 8.0e-7;
-    planet.eccentricity = 0.005;
-    planet.inclination = 0.35;
-    planet.longitude_ascending_node = 1.0;
-    planet.pericentre_omega = 0.0;
-    planet.spin_inclination = 0.34;
     planet.radius_of_gyration_2 = 0.33;
     planet.moment_of_inertia = 5.9e37;
 
+    let spin = 8.0e-7;
+    let eccentricity = 0.005;
+    let inclination = 0.35;
+    let longitude_ascending_node = 1.0;
+    let pericentre_omega = 0.05;
+    let spin_inclination = 0.34;
+
     let star = test_star();
     planet.refresh(planet.semi_major_axis, &star);
-
+    planet.refresh_orbital_elements(
+        spin,
+        eccentricity,
+        inclination,
+        longitude_ascending_node,
+        pericentre_omega,
+        spin_inclination,
+    );
     planet
 }
 

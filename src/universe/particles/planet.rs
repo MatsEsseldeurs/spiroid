@@ -28,9 +28,24 @@ pub struct Planet {
     roche_limit: f64,            // m
     orbit_lower_limit: f64,      // m
     density_ratio: f64,          // ()
+    pub(crate) reduced_mass: f64,
 
     // Calculated internally, only if kaula tides enabled.
     pub(crate) moment_of_inertia: f64, // kg.m^2
+    #[serde(skip)]
+    pub(crate) sin_inc: f64,
+    #[serde(skip)]
+    pub(crate) cos_inc: f64,
+    #[serde(skip)]
+    pub(crate) tan_inc: f64,
+    #[serde(skip)]
+    pub(crate) sin_lan: f64,
+    #[serde(skip)]
+    pub(crate) cos_lan: f64,
+    #[serde(skip)]
+    pub(crate) tan_spin_inc: f64,
+    #[serde(skip)]
+    pub(crate) semi_minor_axis_ratio: f64,
 
     // TODO remove from input parameter.
     #[serde(default)]
@@ -107,6 +122,8 @@ impl Planet {
         self.roche_limit = self.roche_limit(star.radius()); // requires density_ratio
         self.orbit_lower_limit = self.orbit_lower_limit(star.radius()); // requires density_ratio, roche_limit
 
+        self.reduced_mass = (star.mass() * self.mass) / (star.mass() + self.mass);
+
         // Destroy the planet if it is too close to the star (or negative semi major axis).
         if self.crossed_orbital_lower_limit() {
             self.temporarily_destroyed = true;
@@ -143,6 +160,14 @@ impl Planet {
             self.inclination = inclination;
             self.spin_inclination = spin_inclination;
         }
+
+        self.sin_inc = sin!(self.inclination);
+        self.cos_inc = cos!(self.inclination);
+        self.tan_inc = tan!(self.inclination);
+        self.sin_lan = sin!(self.longitude_ascending_node);
+        self.cos_lan = cos!(self.longitude_ascending_node);
+        self.tan_spin_inc = tan!(self.spin_inclination);
+        self.semi_minor_axis_ratio = sqrt!(1. - self.eccentricity.powi(2));
     }
 
     // Calculates the density_ratio (planet / star).
