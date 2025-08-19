@@ -73,9 +73,7 @@ fn _derivatives_tides() {
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::ConstantTimeLag(ConstantTimeLag {
-                equilibrium: Equilibrium::SigmaBarStar {
-                    sigma_bar_star: 1e-6,
-                },
+                equilibrium: Equilibrium::SigmaBarStar(1e-6),
                 inertial: Inertial::FrequencyAveraged,
             }),
             magnetism: MagneticModel::Disabled,
@@ -117,9 +115,7 @@ fn _derivatives_magnetic_tides() {
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::ConstantTimeLag(ConstantTimeLag {
-                equilibrium: Equilibrium::SigmaBarStar {
-                    sigma_bar_star: 1e-6,
-                },
+                equilibrium: Equilibrium::SigmaBarStar(1e-6),
                 inertial: Inertial::FrequencyAveraged,
             }),
             magnetism: MagneticModel::Wind(IsothermalWind::default()),
@@ -218,9 +214,7 @@ fn _planet_semi_major_axis_13_div_2_derivative() {
     let planet = test_planet_magnetic();
     star.refresh_tidal_frequency(&planet);
     let tides = TidalModel::ConstantTimeLag(ConstantTimeLag {
-        equilibrium: Equilibrium::SigmaBarStar {
-            sigma_bar_star: 1e-6,
-        },
+        equilibrium: Equilibrium::SigmaBarStar(1e-6),
         inertial: Inertial::FrequencyAveraged,
     });
     let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
@@ -244,9 +238,7 @@ fn _kaula_planet_semi_major_axis_13_div_2_derivative() {
     star.refresh_tidal_frequency(&planet);
 
     let tides = TidalModel::ConstantTimeLag(ConstantTimeLag {
-        equilibrium: Equilibrium::SigmaBarStar {
-            sigma_bar_star: 1e-6,
-        },
+        equilibrium: Equilibrium::SigmaBarStar(1e-6),
         inertial: Inertial::FrequencyAveraged,
     });
     let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
