@@ -55,10 +55,10 @@ pub struct Star {
     // Evolution model of the star (if enabled).
     evolution: Evolution,
     // Evolving parameters
-    age: f64,               // (s)
-    pub(crate) radius: f64, // (m)
-    convective_radius: f64, // (m)
-    pub(crate) radiative_mass: f64,    // (kg)
+    age: f64,                       // (s)
+    pub(crate) radius: f64,         // (m)
+    convective_radius: f64,         // (m)
+    pub(crate) radiative_mass: f64, // (kg)
     pub(crate) convective_moment_of_inertia_derivative: f64,
     pub(crate) convective_moment_of_inertia: f64, // (kg.m2)
     pub(crate) radiative_moment_of_inertia: f64,  // (kg.m2)
@@ -239,8 +239,10 @@ impl Star {
 
         if matches!(self.evolution, Evolution::Mesa { .. }) {
             // Gallet & Delorme 2019, Eq. 18.
-            self.core_envelope_coupling_constant = 74.6e6 * SECONDS_IN_YEAR * (self.mass / SOLAR_MASS).powf(-3.83)
-                        * (abs!(self.spin) / SOLAR_ANGULAR_VELOCITY).powf(-0.69);
+            self.core_envelope_coupling_constant = 74.6e6
+                * SECONDS_IN_YEAR
+                * (self.mass / SOLAR_MASS).powf(-3.83)
+                * (abs!(self.spin) / SOLAR_ANGULAR_VELOCITY).powf(-0.69);
         }
 
         // Zero the torques. They will be calculated if associated effects are enabled.
@@ -326,11 +328,19 @@ impl Star {
             // If the radiative mass is increasing, the rotation of the convective zone is transferred to the radiative zone.
             (2. / 3.) * self.convective_radius.powi(2) * self.spin * self.radiative_mass_derivative
         } else {
-            if self.radiative_zone_angular_momentum == 0.0 || self.radiative_moment_of_inertia == 0.0 {
+            if self.radiative_zone_angular_momentum == 0.0
+                || self.radiative_moment_of_inertia == 0.0
+            {
                 0.0
             } else {
-                let minspin = min!(self.spin, self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia);
-                (2. / 3.) * self.convective_radius.powi(2) * minspin * self.radiative_mass_derivative
+                let minspin = min!(
+                    self.spin,
+                    self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia
+                );
+                (2. / 3.)
+                    * self.convective_radius.powi(2)
+                    * minspin
+                    * self.radiative_mass_derivative
             }
         }
     }
