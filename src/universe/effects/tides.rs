@@ -7,6 +7,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Default, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum TidalModel {
     #[default]
     Disabled,

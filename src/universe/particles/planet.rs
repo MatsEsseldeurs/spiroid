@@ -21,6 +21,7 @@ pub struct Planet {
     pub(crate) pericentre_omega: f64,         // rad
     pub(crate) spin_inclination: f64,         // rad
     pub(crate) radius_of_gyration_2: f64,     // ()
+    pub(crate) luminosity: f64,               // W
 
     // Calculated internally
     pub(crate) magnetic_pressure: f64,
@@ -82,7 +83,7 @@ impl ParticleT for Planet {
         self.mean_motion
     }
     fn luminosity(&self) -> f64 {
-        todo!()
+        self.luminosity
     }
 }
 
