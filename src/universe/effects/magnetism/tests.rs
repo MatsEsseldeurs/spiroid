@@ -9,6 +9,7 @@ const SEMI_MAJOR_AXIS_VARIABLE_CHANGE: f64 = 1901084820.125515;
 #[test]
 fn _init_weber_davis() {
     let expected = IsothermalWind {
+        footpoint_conductance: 0.0,
         speed_of_sound: 153996.1671039555,
         critical_radius: 2238733085.110173,
         critical_radius_div_alfven_radius: 0.17221179761821032,
@@ -127,6 +128,7 @@ fn _magnetic_torque() {
     let planet = test_planet_magnetic();
     star.refresh_tidal_frequency(&planet);
     let mut wind = IsothermalWind::default();
+    wind.footpoint_conductance = 7.0e4;
     wind.init_weber_davis(SEMI_MAJOR_AXIS_VARIABLE_CHANGE, &star);
     let result = wind.magnetic_torque(&planet, &star);
     assert_eq!(expected, result);

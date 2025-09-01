@@ -33,9 +33,11 @@ def make_planets(planet_base, effects):
             "mass": mass,
             "radius": radius,
             "semi_major_axis": semi_major_axis,
-            "magnetic_field": magnetic_field,
             "is_destroyed": is_destroyed,
         }
+
+        if effects["MAGNETIC_EFFECT_ENABLED"]:
+            planet["magnetic_field"] = magnetic_field
 
         if effects["PLANET_TIDES_ENABLED"]:
             (
@@ -94,7 +96,6 @@ def make_stars(star_base, effects):
             "mass": mass,
             "spin": spin,
             "core_envelope_coupling_constant": core_envelope_coupling_constant,
-            "footpoint_conductance": footpoint_conductance,
             "evolution": "Disabled",
         }
 
@@ -102,7 +103,7 @@ def make_stars(star_base, effects):
             body["tides"] = {"ConstantTimeLag": sigma_bar}
 
         if effects["MAGNETIC_EFFECT_ENABLED"]:
-            body["magnetism"] = {"Wind": {}}
+            body["magnetism"] = {"Wind": {"footpoint_conductance": footpoint_conductance}}
 
         if effects["STAR_EVOLUTION_ENABLED"]:
             star["evolution"] = {"Interpolated": {"star_file_path": star_file_path}}

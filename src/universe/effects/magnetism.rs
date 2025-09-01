@@ -41,7 +41,7 @@ impl MagneticModel {
 #[derive(Debug, PartialEq, Default, Serialize, Deserialize, Clone)]
 pub enum MagneticInteraction {
     #[default]
-    None,
+    None, // Only exists for Default trait.
     Unipolar,
     Dipolar,
 }
@@ -50,6 +50,10 @@ pub enum MagneticInteraction {
 #[serde(default)]
 // Computation of a 1D magnetized isothermal wind to quantify angular momentum exchange in Star-Planet Magnetic Interactions
 pub struct IsothermalWind {
+    // User specified
+    pub(crate) footpoint_conductance: f64, // (Ohm-1)
+
+    // Calculated internally
     speed_of_sound: f64,                    // (m.s-1)
     critical_radius: f64,                   // (m)
     critical_radius_div_alfven_radius: f64, // ()
@@ -476,14 +480,13 @@ impl IsothermalWind {
             // Dipolar interaction,  with magnetosphere
             MagneticInteraction::Dipolar
         };
-
         // Unipolar torque
         let torque_unipolar = 8.
             * planet.radius.powi(2)
             * planet.semi_major_axis.powi(2)
             * star.tidal_frequency
             * self.radial_magnetic_field.powi(2)
-            * star.footpoint_conductance;
+            * self.footpoint_conductance;
 
         // Dipolar torque
         let torque_dipolar = 10.8

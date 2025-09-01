@@ -33,7 +33,6 @@ pub fn test_star() -> Star {
     star.mass = 1.5909177014856084e30;
     star.core_envelope_coupling_constant = 369539496.0e6;
     // The tolerance is very high: any value in range 4.7e5 to 9.3e5 will pass the existing tests.
-    star.footpoint_conductance = 7.0e4;
     star.radius = 544588072.4685764;
     star.radiative_mass = 1.5048623991131647e30;
     star.convective_radius = 374606632.43479675;
@@ -155,7 +154,9 @@ fn _magnetic_torque_enabled() {
     let mut star = test_star();
     let planet = test_planet_magnetic();
     star.refresh_tidal_frequency(&planet);
-    let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
+    let mut wind = IsothermalWind::default();
+    wind.footpoint_conductance = 7.0e4;
+    let mut magnetism = MagneticModel::Wind(wind);
 
     let result = magnetism.magnetic_torque(&planet, &star);
     assert_eq!(expected, result);

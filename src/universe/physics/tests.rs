@@ -21,6 +21,8 @@ fn _derivatives_magnetic() {
         star.convective_zone_angular_momentum,
         planet.semi_major_axis.powf(6.5),
     ];
+    let mut wind = IsothermalWind::default();
+    wind.footpoint_conductance = 7.0e4;
 
     let mut universe = Universe {
         orbiting_body: Particle {
@@ -32,7 +34,7 @@ fn _derivatives_magnetic() {
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::Disabled,
-            magnetism: MagneticModel::Wind(IsothermalWind::default()),
+            magnetism: MagneticModel::Wind(wind),
             wind: WindModel::Enabled,
         },
         time: TEST_TIME,
@@ -99,6 +101,9 @@ fn _derivatives_magnetic_tides() {
         planet.semi_major_axis.powf(6.5),
     ];
 
+    let mut wind = IsothermalWind::default();
+    wind.footpoint_conductance = 7.0e4;
+
     let mut universe = Universe {
         orbiting_body: Particle {
             kind: ParticleType::Planet(planet),
@@ -109,7 +114,7 @@ fn _derivatives_magnetic_tides() {
         central_body: Particle {
             kind: ParticleType::Star(star),
             tides: TidalModel::ConstantTimeLag(1e-6),
-            magnetism: MagneticModel::Wind(IsothermalWind::default()),
+            magnetism: MagneticModel::Wind(wind),
             wind: WindModel::Enabled,
         },
         time: TEST_TIME,
@@ -205,7 +210,9 @@ fn _planet_semi_major_axis_13_div_2_derivative() {
     let planet = test_planet_magnetic();
     star.refresh_tidal_frequency(&planet);
     let tides = TidalModel::ConstantTimeLag(1e-6);
-    let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
+    let mut wind = IsothermalWind::default();
+    wind.footpoint_conductance = 7.0e4;
+    let mut magnetism = MagneticModel::Wind(wind);
     let tidal_torque = tides.tidal_torque(&star, &planet);
     let magnetic_torque = magnetism.magnetic_torque(&planet, &star);
     let wind_torque = WindModel::Enabled.wind_torque();
@@ -226,7 +233,9 @@ fn _kaula_planet_semi_major_axis_13_div_2_derivative() {
     star.refresh_tidal_frequency(&planet);
 
     let tides = TidalModel::ConstantTimeLag(1e-6);
-    let mut magnetism = MagneticModel::Wind(IsothermalWind::default());
+    let mut wind = IsothermalWind::default();
+    wind.footpoint_conductance = 7.0e4;
+    let mut magnetism = MagneticModel::Wind(wind);
     let tidal_torque = tides.tidal_torque(&star, &planet);
     let magnetic_torque = magnetism.magnetic_torque(&planet, &star);
     let wind_torque = WindModel::Enabled.wind_torque();

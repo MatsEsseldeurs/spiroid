@@ -50,7 +50,6 @@ pub struct Star {
     pub(crate) mass: f64,                            // (kg)
     pub(crate) spin: f64,                            // (rad.s-1)
     pub(crate) core_envelope_coupling_constant: f64, // (s)
-    pub(crate) footpoint_conductance: f64,           // (Ohm-1)
 
     // Evolution model of the star (if enabled).
     evolution: Evolution,

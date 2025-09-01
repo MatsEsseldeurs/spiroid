@@ -60,10 +60,13 @@ def planet_setup(effects):
         "radius": [3.255e7],
         # m (from AU)
         "semi_major_axis": [AU * x for x in [0.019]],
-        # Gauss
-        "magnetic_field": [10.0],
+        "magnetic_field": [None], # Do not edit.
         "is_destroyed": [False],
     }
+
+    if effects["MAGNETIC_EFFECT_ENABLED"]:
+        # Gauss
+        planet_base["magnetic_field"] = [10.0]
 
     if effects["PLANET_TIDES_ENABLED"]:
         # For Kaula
@@ -106,11 +109,15 @@ def star_setup(effects):
         "spin": [5.194e-05],
         # seconds (from years)
         "core_envelope_coupling_constant": [SECONDS_IN_YEAR * x for x in [1.171e7]],
-        # Ohm-1
-        "footpoint_conductance": [5.8e4],
-        "star_file_path": [None],  # Do not edit.
+
+        "footpoint_conductance": [None],  # Do not edit.
+        "evolution": [None],  # Do not edit.
         "sigma_bar": [None],  # Do not edit.
     }
+
+    if effects["MAGNETIC_EFFECT_ENABLED"]:
+        # Ohm-1
+        star_base["footpoint_conductance"] =  [5.8e4]
 
     if effects["STAR_EVOLUTION_ENABLED"]:
         star_base["star_file_path"] = ["examples/data/star/evolution/savgol_08.csv"]
