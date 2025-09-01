@@ -27,13 +27,12 @@ def make_planets(planet_base, effects):
     combis = [x for x in itertools.product(*planet_base.values())]
 
     for planet_vals in combis:
-        (mass, radius, semi_major_axis, magnetic_field, is_destroyed) = planet_vals[:5]
+        (mass, radius, semi_major_axis, magnetic_field) = planet_vals[:4]
         body = {}
         planet = {
             "mass": mass,
             "radius": radius,
             "semi_major_axis": semi_major_axis,
-            "is_destroyed": is_destroyed,
         }
 
         if effects["MAGNETIC_EFFECT_ENABLED"]:
@@ -87,13 +86,12 @@ def make_stars(star_base, effects):
             spin,
             core_envelope_coupling_constant,
             footpoint_conductance,
-            star_file_path,
+            evolution,
             sigma_bar,
         ) = star_vals[:6]
 
         body = {}
         star = {
-            "mass": mass,
             "spin": spin,
             "core_envelope_coupling_constant": core_envelope_coupling_constant,
             "evolution": "Disabled",
@@ -106,8 +104,9 @@ def make_stars(star_base, effects):
             body["magnetism"] = {"Wind": {"footpoint_conductance": footpoint_conductance}}
 
         if effects["STAR_EVOLUTION_ENABLED"]:
-            star["evolution"] = {"Interpolated": {"star_file_path": star_file_path}}
+            star["evolution"] = evolution
         else:
+            star["mass"] = mass
             star["radiative_moment_of_inertia"] = star_vals[6]
             star["convective_moment_of_inertia"] = star_vals[7]
         body["kind"] = {"Star": star}

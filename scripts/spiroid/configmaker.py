@@ -18,7 +18,14 @@ from spiroid.config import generate_all_configs, generate_all_effect_combination
 def make_config_files(simulation_name, all_configs, output_path):
     """Generate a simulation input config for all combinations of the star and planet values."""
     for i, config in enumerate(all_configs):
-        config_name = f"{output_path}/{simulation_name}_{i}.json.conf"
+        # Append the name of the stellar evolution model, if used
+        evolution_model = config["universe"]["central_body"]["kind"]["Star"].get("evolution", None)
+        if evolution_model != "Disabled":
+            evolution_model = f"-{list(evolution_model.keys())[0].lower()}" if evolution_model else ""
+        else:
+            evolution_model = ""
+
+        config_name = f"{output_path}/{simulation_name}{evolution_model}_{i}.json.conf"
         print(f"Making config: {config_name}")
         with open(config_name, "x") as f:
             f.write(json.dumps(config, indent=4))

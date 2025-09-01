@@ -55,7 +55,7 @@ from units import (
 
 
 def parse_values(file_path):
-    print(f"reading data file: {file_path})")
+    print(f"reading data file: {file_path}")
     if file_path.endswith(".jsonl.lz4"):
         data = lz4tools.open(file_path).read().split(b'\n')
         return parse_jsonl(data)
