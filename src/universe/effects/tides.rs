@@ -1,6 +1,9 @@
 pub(crate) mod kaula;
 pub use kaula::Kaula;
 
+pub(crate) mod constant_time_lag;
+pub use constant_time_lag::ConstantTimeLag;
+
 use crate::universe::particles::{Planet, Star};
 
 use anyhow::Result;
@@ -12,7 +15,7 @@ pub enum TidalModel {
     #[default]
     Disabled,
     // Equilibrium tide dissipation given as the dimensionless sigma_bar_star from Bolmont & Mathis (2016), Eq. 8
-    ConstantTimeLag(f64),
+    ConstantTimeLag(ConstantTimeLag),
     KaulaTides {
         kaula: Kaula,
     },
@@ -22,9 +25,9 @@ impl TidalModel {
     pub(crate) fn tidal_torque(&self, star: &Star, planet: &Planet) -> f64 {
         match self {
             TidalModel::Disabled => 0.0,
-            TidalModel::ConstantTimeLag(equilibrium_tide_dissipation) => {
+            TidalModel::ConstantTimeLag(constant_time_lag) => {
                 // requires tidal_frequency
-                star.tidal_torque_ctl(*equilibrium_tide_dissipation, planet)
+                constant_time_lag.tidal_torque(star, planet)
             }
             TidalModel::KaulaTides { .. } => todo!(),
         }

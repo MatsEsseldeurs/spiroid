@@ -54,10 +54,10 @@ pub struct Star {
     // Evolution model of the star (if enabled).
     evolution: Evolution,
     // Evolving parameters
-    age: f64,               // (s)
-    pub(crate) radius: f64, // (m)
-    convective_radius: f64, // (m)
-    radiative_mass: f64,    // (kg)
+    age: f64,                       // (s)
+    pub(crate) radius: f64,         // (m)
+    convective_radius: f64,         // (m)
+    pub(crate) radiative_mass: f64, // (kg)
     pub(crate) convective_moment_of_inertia_derivative: f64,
     pub(crate) convective_moment_of_inertia: f64, // (kg.m2)
     pub(crate) radiative_moment_of_inertia: f64,  // (kg.m2)
@@ -65,8 +65,8 @@ pub struct Star {
     pub(crate) luminosity: f64, // solar units
 
     // Calculated internally
-    dynamical_tide_dissipation: f64,
-    convective_turnover_time: f64,
+    pub(crate) dynamical_tide_dissipation: f64,
+    pub(crate) convective_turnover_time: f64,
     convective_turnover_time_sun: f64,
     pub(crate) angular_momentum_redistribution: f64,
     pub(crate) mass_transfer_envelope_to_core_torque: f64, // structural evolution
@@ -391,6 +391,7 @@ impl Star {
 
     // Adjust the mass in each layer (radiative and convective) based on the stellar evolution model.
     // Benbakoura et al. 2019, Eq 2.
+    // TODO does this need another reference due to changes?
     fn mass_transfer_envelope_to_core_torque(&self) -> f64 {
         // Takes into account the structural evolution of the star and the torques applied on both radiative and convective zones.
         if self.radiative_mass_derivative >= 0.0 {
@@ -460,7 +461,9 @@ impl Star {
         -2. / 3. * self.spin * self.evolved_mass_loss_rate * self.radius.powi(2)
     }
 
-    // Gallet & Delorme 2019, Eq. 18.
+    // Gallet & Delorme 2019, Eq. 1.
+    // Evolving core-envelope coupling constant that reduces
+    // the coupling efficiency during the evolved phases.
     fn evolving_core_envelope_coupling_constant(&self) -> f64 {
         74.6e6
             * SECONDS_IN_YEAR
@@ -472,62 +475,6 @@ impl Star {
     // Benbakoura et al. 2019, Eq. 7
     fn alfven_radius_estimate(&self) -> f64 {
         sqrt!(abs!(self.wind_torque) / (self.mass_loss_rate * abs!(self.spin)))
-    }
-
-    // This is a re-write of Eq. 3 and 19 from Benbakoura et al. 2019
-    // without the factors that are in the function semi_major_axis_13_div_2_derivative in physics.rs
-    // The a^-6 is here to compensate the a^6 in physics.rs
-    pub fn tidal_torque_ctl(&self, equilibrium_tide_dissipation: f64, planet: &Planet) -> f64 {
-        let tidal_quality = self.tidal_quality(equilibrium_tide_dissipation);
-        // Smoothing parameter when tidal frequency is 0
-        let depth = 1E-08;
-        -(9. / 4.)
-            * planet.mass.powi(2)
-            * GRAVITATIONAL
-            * planet.semi_major_axis.powi(-6)
-            * tanh!(self.tidal_frequency / depth)
-            * self.radius.powi(5)
-            / tidal_quality
-    }
-
-    // Calculates the equivalent tidal quality factor as in Mathis 2015 and Bolmont & Mathis 2016.
-    pub fn tidal_quality(&self, equilibrium_tide_dissipation: f64) -> f64 {
-        // Epsilon to ensure that equilibrium_tide_quality_factors stays finite
-        let epsilon_secure = 1.0E-10;
-        // Epsilon to ensure a smooth transition equilibrium / dynamical tide
-        let epsilon_step = 1.0E-06;
-
-        // Equilibrium tide
-        // Normalization constant for equilibrium tide (Bolmont & Mathis,  2016,  Eq. 8)
-        let normalisation_constant = sqrt!(GRAVITATIONAL / (SOLAR_MASS * SOLAR_RADIUS.powi(7)));
-        // Tidal quality factors for the equilibrium tide
-        // This is Eq. 22 of Benbakoura et al. 2019
-        let equilibrium_tide_quality_factors = GRAVITATIONAL
-            / (abs!(self.tidal_frequency + epsilon_secure)
-                * equilibrium_tide_dissipation
-                * normalisation_constant
-                * self.radius.powi(5));
-
-        // Dynamical tide
-        // Equivalent Q' factor, tidal quality factor
-        // This is the inverse of Eq. 4 of Bolmont & Mathis 2016,
-        // which give the tidal quality factor Q' as a function of <D>w
-        // (Eq. 1 of Mathis 2015, or Bolmont & Mathis 2016)
-        // But here, keep in mind that the spin was removed out of <D>w to be then multiplied here
-        // Q' = 3 / ( 2 * <D>w ) | Bolmont & Mathis
-        // Q' = 3 / ( 2 * <D>w' * spin^2 ) | here
-        let dynamical_tide_quality_factors =
-            3. / (2. * self.dynamical_tide_dissipation * self.spin.powi(2));
-
-        // Total dissipation
-        // The multiplicative factor after dynamical_tide_quality_factors allows to pass continuously above 0 when inertia waves are raised
-        // Benbakoura et al. 2019 Eq. 20
-        let total_dissipiation = 1. / equilibrium_tide_quality_factors
-            + (1. / dynamical_tide_quality_factors)
-                * 0.5
-                * (1. + tanh!((self.tidal_frequency + 2. * self.spin) / epsilon_step));
-
-        1. / total_dissipiation
     }
 
     // Ardestani et al. 2017 Eq. A1
@@ -557,6 +504,7 @@ pub mod tests;
 // Efroimsky 2012, https://doi.org/10.1007/s10569-011-9397-4
 // Esseldeurs et al. 2025, submitted TODO update when published
 // Finley et al. 2018 https://doi.org/10.3847/1538-4357/aad7b6
+// Gallet & Delorme 2019, https://doi.org/10.1051/0004-6361/201834898
 // MacGregor & Brenner 1991, https://doi.org/10.1086/170269
 // Madappatt et al, 2016, https://doi.org/10.1093/mnras/stw2025
 // Mathis 2015, https://doi.org/10.1051/0004-6361/201526472
