@@ -15,7 +15,7 @@ The physics has been validated by the following contributors:
 - Stellar evolution and magnetic interaction by [Antoine Strugarek, CEA](https://tonione.github.io/antoinestrugarek.github.io/)
 - Stellar and planetary formulations by [Émeline Bolmont, UniGE](https://www.unige.ch/sciences/astro/exoplanets/en/team/faculty-members/emeline-bolmont/) and [Leon Ka-Wang Kwok, UniGE](https://www.unige.ch/sciences/astro/exoplanets/en/team/scientific-collaborators/kwok-leon/)
 - Tides in Kaula formalism by [Alexandre Revol, UniGE](https://www.unige.ch/sciences/astro/exoplanets/en/team/scientific-collaborators/revol-alexandre/)
-- Post main sequence stellar evolution and stellar winds [Mats Esseldeurs, KU Leuven](https://fys.kuleuven.be/ster/staff/phd-students/mats-esseldeurs)
+- Post main sequence stellar evolution and stellar winds by [Mats Esseldeurs, KU Leuven](https://fys.kuleuven.be/ster/staff/phd-students/mats-esseldeurs)
 
 With all effects enabled, `spiroid` can simulate between `2e6` and `2e7` years per second (i.e. a simulation of `1e7` years completes in 0.5 seconds).
 
@@ -163,7 +163,6 @@ The format of the file must be CSV (Comma Separated Values) with the following h
 Additional fields, only required by MESA data files:
 
 - `convective_turnover_time` (seconds)
-- `core_envelope_coupling_constant` (seconds)
 - `mass_loss_rate ` mass loss rate duing the evolved phase (solar mass / year)
 
 
@@ -176,6 +175,9 @@ Magnetic interaction (initiated by the star) can be toggled into the following s
 #### Wind
 Set the `magnetism` property of the `central_body` `Particle` to `Wind`.
 Set the desired values of `magnetic_field` for `Planet` and `Star`.
+
+### Evolved Wind
+When using a `MESA` stellar evolutionary model, the evolved wind is automatically enabled. From the amount of mass that is lost from the stellar wind, the angular momentum of the envelope is reduced, and the semi-major axis of the orbiting body is affected.
 
 ### Tides
 

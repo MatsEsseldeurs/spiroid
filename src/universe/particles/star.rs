@@ -79,10 +79,16 @@ pub struct Star {
     tidal_quality: f64,
     pub(crate) tidal_frequency: f64,
     pub(crate) magnetic_torque: f64,
-    pub(crate) tidal_torque: f64,
+    pub(crate) tidal_torque_convective: f64,
+
+    // Evolved parameters
     pub(crate) evolved_wind_torque: f64,
+    pub(crate) evolved_change_semi_major_axis: f64,
     // Additional mass loss rate during the evolved phase of the star.
     evolved_mass_loss_rate: f64, // (kg.s-1)
+    terminal_wind_speed: f64,    // (m.s-1)
+    mass_accretion_efficiency: f64,
+    wind_orbital_angular_momentum_loss: f64,
 
     // Integration parameters
     pub(crate) convective_zone_angular_momentum: f64, // (kg.m^2.s-1)
@@ -182,8 +188,7 @@ impl Star {
 
                 if matches!(self.evolution, Evolution::Mesa { .. }) {
                     self.convective_turnover_time = values[10];
-                    self.core_envelope_coupling_constant = values[11];
-                    self.evolved_mass_loss_rate = values[12];
+                    self.evolved_mass_loss_rate = values[11];
                 }
 
                 self.dynamical_tide_dissipation = self.dynamical_tide_dissipation();
@@ -227,17 +232,20 @@ impl Star {
         self.angular_momentum_redistribution = self.angular_momentum_redistribution(); // requires convective_moment_of_inertia, radiative_moment_of_inertia, convective_zone_angular_momentum, radiative_zone_angular_momentum
         self.mass_transfer_envelope_to_core_torque = self.mass_transfer_envelope_to_core_torque(); // requires convective_radius, radiative_mass_derivative, spin
 
-        // Only used by tides and magnetism
-        if !matches!(self.evolution, Evolution::Mesa { .. }) {
+        if matches!(self.evolution, Evolution::Mesa { .. }) {
+            self.core_envelope_coupling_constant = self.evolving_core_envelope_coupling_constant(); // requres mass, spin
+        } else {
+            // Only used by tides and magnetism
             let convective_zone_mass_ratio = (self.mass - self.radiative_mass) / self.mass;
             self.convective_turnover_time =
                 Self::convective_turnover_time(convective_zone_mass_ratio);
         }
+
         self.rossby = self.rossby(); // requires convective_turnover_time, spin
         self.mass_loss_rate = self.mass_loss_rate(); // requires mass, rossby
 
         // Zero the torques. They will be calculated if associated effects are enabled.
-        self.tidal_torque = 0.0;
+        self.tidal_torque_convective = 0.0;
         self.magnetic_torque = 0.0;
         self.wind_torque = 0.0;
         self.alfven_radius = 0.0;
@@ -251,8 +259,8 @@ impl Star {
     }
 
     // Update the tidal torque.
-    pub(crate) fn update_tidal_torque(&mut self, tidal_torque: f64) {
-        self.tidal_torque = tidal_torque;
+    pub(crate) fn update_tidal_torque(&mut self, tidal_torque_convective: f64) {
+        self.tidal_torque_convective = tidal_torque_convective;
     }
 
     // Update the magnetic torque.
@@ -268,6 +276,76 @@ impl Star {
             self.alfven_radius = self.alfven_radius_estimate(); // requires mass_loss_rate, wind_torque
             self.evolved_wind_torque = self.evolved_wind_torque(); // requires spin, evolved_mass_loss_rate, radius
         }
+    }
+
+    pub(crate) fn update_evolved_change_semi_major_axis(&mut self, enabled: bool, planet: &Planet) {
+        if enabled {
+            self.evolved_change_semi_major_axis = self.evolved_change_semi_major_axis(planet); // requires mass, radius, planet mass, semi_major_axis, mean_motion
+        }
+    }
+
+    // TODO Only works for circular orbits, can be extended for eccentric orbits.
+    // The change in semi-major axis is computed using the terminal wind speed and orbital velocity.
+    // Depending on these two velocities, the mass accretion efficiency and wind orbital angular momentum loss are computed.
+    // These quantities are then used to compute the change in semi-major axis.
+    fn evolved_change_semi_major_axis(&mut self, planet: &Planet) -> f64 {
+        self.terminal_wind_speed = self.terminal_wind_speed(); // requires mass, radius
+        let orbital_velocity = planet.mean_motion * planet.semi_major_axis; // requires semi_major_axis, mean_motion
+        let mass_ratio = planet.mass / self.mass; // requires mass, planet mass; Esseldeurs et al. 2025, below Eq. 18
+        self.mass_accretion_efficiency =
+            self.mass_accretion_efficiency(mass_ratio, orbital_velocity); // requires terminal_wind_speed
+        self.wind_orbital_angular_momentum_loss =
+            self.wind_orbital_angular_momentum_loss(mass_ratio, orbital_velocity); // requires terminal_wind_speed
+
+        // Esseldeurs et al. 2025, Eq. 20
+        2. * planet.semi_major_axis * self.evolved_mass_loss_rate / self.mass
+            * (1.
+                - self.mass_accretion_efficiency / mass_ratio
+                - self.wind_orbital_angular_momentum_loss
+                    * (1. - self.mass_accretion_efficiency)
+                    * (1. + mass_ratio)
+                    / mass_ratio
+                - (1. - self.mass_accretion_efficiency) / 2. / (1. + mass_ratio))
+    }
+
+    // Computes the terminal wind speed.
+    // This is the speed at which the stellar wind reaches its maximum velocity.
+    // Esseldeurs et al. 2025, Eq. 22
+    fn terminal_wind_speed(&self) -> f64 {
+        let alpha_wind = 1. / 8.; // Esseldeurs et al. 2025, below Eq. 22
+        sqrt!(2. * alpha_wind * GRAVITATIONAL * self.mass / self.radius)
+    }
+
+    // Computes the mass accretion efficiency.
+    // This is the fraction of the stellar wind that is accreted by the planet.
+    // Esseldeurs et al. 2025, Eq. 20, based on Saladino et al. 2019
+    fn mass_accretion_efficiency(&self, mass_ratio: f64, orbital_velocity: f64) -> f64 {
+        // Bondi-Hoyle-Lyttleton accretion, see Edgar 2004
+        let mass_accretion_efficiency_bhl = mass_ratio.powi(2) / (1. + mass_ratio).powi(2)
+            * orbital_velocity.powi(4)
+            / (self.terminal_wind_speed
+                * (self.terminal_wind_speed.powi(2) + orbital_velocity.powi(2)).powf(1.5));
+        // Esseldeurs et al. 2025, below Eq. 20
+        let mass_accretion_efficiency = (0.75
+            + 1.0
+                / (1.7
+                    + 0.3 / mass_ratio
+                    + ((0.5 + 0.2 / mass_ratio) * self.terminal_wind_speed / orbital_velocity)
+                        .powi(5)))
+            * mass_accretion_efficiency_bhl;
+        min!(mass_accretion_efficiency, 0.3_f64, 1.4 * mass_ratio.powi(2))
+    }
+
+    // Computes the wind orbital angular momentum loss.
+    // This is the fraction of the orbital angular momentum that is lost due to the stellar wind.
+    // Esseldeurs et al. 2025, Eq. 21, based on Saladino et al. 2019
+    fn wind_orbital_angular_momentum_loss(&self, mass_ratio: f64, orbital_velocity: f64) -> f64 {
+        let wind_orbital_angular_momentum_loss_iso = mass_ratio.powi(2) / (1. + mass_ratio).powi(2);
+        let wind_orbital_angular_momentum_loss = 1.0
+            / (max!(mass_ratio.powi(-1), 0.6 * mass_ratio.powf(-1.7))
+                + ((1.5 + 0.3 / mass_ratio) * self.terminal_wind_speed / orbital_velocity).powi(3))
+            + wind_orbital_angular_momentum_loss_iso;
+        min!(wind_orbital_angular_momentum_loss, 0.6)
     }
 
     fn dynamical_tide_dissipation(&self) -> f64 {
@@ -315,7 +393,20 @@ impl Star {
     // Benbakoura et al. 2019, Eq 2.
     fn mass_transfer_envelope_to_core_torque(&self) -> f64 {
         // Takes into account the structural evolution of the star and the torques applied on both radiative and convective zones.
-        (2. / 3.) * self.convective_radius.powi(2) * self.spin * self.radiative_mass_derivative
+        if self.radiative_mass_derivative >= 0.0 {
+            // If the radiative mass is increasing, the rotation of the convective zone is transferred to the radiative zone.
+            (2. / 3.) * self.convective_radius.powi(2) * self.spin * self.radiative_mass_derivative
+        } else if self.radiative_zone_angular_momentum == 0.0
+            || self.radiative_moment_of_inertia == 0.0
+        {
+            0.0
+        } else {
+            let minspin = min!(
+                self.spin,
+                self.radiative_zone_angular_momentum / self.radiative_moment_of_inertia
+            );
+            (2. / 3.) * self.convective_radius.powi(2) * minspin * self.radiative_mass_derivative
+        }
     }
 
     // Computes the Rossby number.
@@ -367,6 +458,14 @@ impl Star {
     // Madappatt et al 2016, Eq. 2
     fn evolved_wind_torque(&self) -> f64 {
         -2. / 3. * self.spin * self.evolved_mass_loss_rate * self.radius.powi(2)
+    }
+
+    // Gallet & Delorme 2019, Eq. 18.
+    fn evolving_core_envelope_coupling_constant(&self) -> f64 {
+        74.6e6
+            * SECONDS_IN_YEAR
+            * (self.mass / SOLAR_MASS).powf(-3.83)
+            * (abs!(self.spin) / SOLAR_ANGULAR_VELOCITY).powf(-0.69)
     }
 
     // Alfven radius estimate from the stellar wind torque and mass loss rate.
@@ -454,10 +553,13 @@ pub mod tests;
 // Ardestani et al. 2017, https://doi.org/10.1093/mnras/stx2039
 // Benbakoura et al. 2019, https://doi.org/10.1051/0004-6361/201833314
 // Christensen-Dalsgaard et al. 1991 https://doi.org/10.1086/170441
+// Edgar 2004, https://doi.org/10.1016/j.newar.2004.06.001
 // Efroimsky 2012, https://doi.org/10.1007/s10569-011-9397-4
+// Esseldeurs et al. 2025, submitted TODO update when published
 // Finley et al. 2018 https://doi.org/10.3847/1538-4357/aad7b6
 // MacGregor & Brenner 1991, https://doi.org/10.1086/170269
 // Madappatt et al, 2016, https://doi.org/10.1093/mnras/stw2025
 // Mathis 2015, https://doi.org/10.1051/0004-6361/201526472
 // Matt et al. 2015, https://doi.org/10.1088/2041-8205/799/2/L23
 // Ogilvie 2013, https://doi.org/10.1093/mnras/sts362
+// Saladino et al. 2019, https://doi.org/10.1051/0004-6361/201834598

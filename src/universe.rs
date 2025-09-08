@@ -143,9 +143,10 @@ impl Universe {
         // Recompute star values that depend on planet (tidal and magnetic torque).
         star.refresh_tidal_frequency(planet);
 
-        // Compute the enabled effects (magnetism, stellar tides, planet tides)
+        // Compute the enabled effects dependent on a planet (magnetism, planet tides)
         star.update_tidal_torque(self.central_body.tides.tidal_torque(star, planet));
         star.update_magnetic_torque(self.central_body.magnetism.magnetic_torque(planet, star)); // Requires wind torque to be calculated first.
+        star.update_evolved_change_semi_major_axis(self.central_body.wind.wind_torque(), planet);
 
         if self.orbiting_body.tides.kaula_enabled() {
             //(spin, eccentricity, inclination, longitude_ascending_node, pericentre_omega, spin_inclination)
