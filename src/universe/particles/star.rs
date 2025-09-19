@@ -249,6 +249,7 @@ impl Star {
         self.magnetic_torque = 0.0;
         self.wind_torque = 0.0;
         self.alfven_radius = 0.0;
+        self.evolved_wind_torque = 0.0;
 
         Ok(())
     }
@@ -442,14 +443,15 @@ impl Star {
         // Most scaling laws were adjusted with this constant as 8e23 to recover the Sun.
         // A clean study should be made again before changing this.
 
+        // Matt et al. 2015, Eq. 8
         let gamma =
             8e23 * (self.radius / SOLAR_RADIUS).powf(3.1) * (self.mass / SOLAR_MASS).powf(0.5);
         // Wind braking torque in Joules, following (Matt et al. 2015)
-        if self.rossby > ROSSBY_SATURATION {
+        if self.rossby > ROSSBY_SATURATION { // Matt et al. 2015, Eq. 6
             -gamma
                 * (self.convective_turnover_time / self.convective_turnover_time_sun).powi(2)
                 * (self.spin / SOLAR_ANGULAR_VELOCITY).powi(3)
-        } else {
+        } else { // Matt et al. 2015, Eq. 7
             -gamma * (ROSSBY_SUN / ROSSBY_SATURATION).powi(2) * (self.spin / SOLAR_ANGULAR_VELOCITY)
         }
     }
